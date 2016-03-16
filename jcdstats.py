@@ -9,7 +9,7 @@ import jcd.dao
 
 class MinMax(object):
 
-    StationsDayTable = "stations_day"
+    StationsDayTable = "minmax_stations_day"
 
     def __init__(self, db, sample_schema):
         self._db = db
@@ -98,7 +98,6 @@ class App(object):
     def run(self):
         # parse arguments
         arguments = self._parser.parse_args()
-        print arguments
         with jcd.common.SqliteDB(arguments.dbname, arguments.datadir) as db_stats:
             for date in arguments.date:
                 if arguments.verbose:
@@ -106,7 +105,6 @@ class App(object):
                 # attach samples db
                 schema = jcd.dao.ShortSamplesDAO.get_schema_name(date)
                 filename = jcd.dao.ShortSamplesDAO.get_db_file_name(schema)
-                print schema, filename
                 db_stats.attach_database(filename, schema, arguments.datadir)
                 # do processing
                 MinMax(db_stats, schema).run(date)
