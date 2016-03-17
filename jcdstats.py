@@ -152,6 +152,26 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
 
+    def _do_contracts(self, date):
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT date,
+                        contract_id,
+                        SUM(num_changes) as num_changes,
+                        NULL
+                    FROM %s
+                    WHERE date = ?
+                    GROUP BY contract_id
+                ''' % (self.ContractsDayTable,
+                       self.StationsDayTable),
+                (date,))
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+
     def _stations_day_get(self, date):
         try:
             req = self._db.connection.execute(
@@ -256,6 +276,7 @@ class Activity(object):
 
     def run(self, date):
         self._do_stations(date)
+        self._do_contracts(date)
         self._stations_day_update_ranks(date)
 
 class App(object):
