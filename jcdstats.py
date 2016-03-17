@@ -131,7 +131,7 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
 
-    def _get_stations(self, date):
+    def _stations_day_get(self, date):
         try:
             req = self._db.connection.execute(
                 '''
@@ -164,38 +164,69 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while getting daily activity ranks")
 
-    def _rank_stations(self, date):
-        n_total = 0
-        n_rank = 0
-        last_value = None
-        for rank in self._get_stations(date):
-            # one more sample done
-            n_total += 1
+    def _stations_day_compute_ranks(self, date):
+
+        contracts = {}
+        global_infos = {
+            "n_total": None,
+            "n_rank": None,
+            "n_last": None
+        }
+
+        for rank in self._stations_day_get(date):
+
+            ## calculate contract ranks
             # first
-            if last_value is None:
-                n_rank = n_total
-                last_value = rank["num_changes"]
+            if rank["contract_id"] not in contracts:
+                contracts[rank["contract_id"]] = {
+                    "c_total": 0,
+                    "c_rank": 1,
+                    "c_last": rank["num_changes"]
+                }
+            # quicker lookip
+            contract_infos = contracts[rank["contract_id"]]
+            # sample done for contract
+            contract_infos["c_total"] += 1
             # not the same number of events
-            if rank["num_changes"] != last_value:
-                n_rank = n_total
-                last_value = rank["num_changes"]
+            if rank["num_changes"] != contract_infos["c_last"]:
+                contract_infos["c_rank"] = contract_infos["c_total"]
+                contract_infos["c_last"] = rank["num_changes"]
             # set rank
-            rank["rank_global"] = n_rank
+            rank["rank_contract"] = contract_infos["c_rank"]
+
+            ## calculate global ranks
+            # first
+            if global_infos["n_last"] is None:
+                global_infos["n_total"] = 0
+                global_infos["n_rank"] = 1
+                global_infos["n_last"] = rank["num_changes"]
+            # sample done globally
+            global_infos["n_total"] += 1
+            # not the same number of events
+            if rank["num_changes"] != global_infos["n_last"]:
+                global_infos["n_rank"] = global_infos["n_total"]
+                global_infos["n_last"] = rank["num_changes"]
+            # set rank
+            rank["rank_global"] = global_infos["n_rank"]
+
+            ## return value
             yield rank
+
         # TODO: what to do when there is nothing ?
 
-    def _update_rank_stations(self, date):
+    def _stations_day_update_ranks(self, date):
         try:
             # update any existing contracts
             req = self._db.connection.executemany(
                 '''
                 UPDATE %s
-                SET rank_global = :rank_global
+                SET rank_global = :rank_global,
+                    rank_contract = :rank_contract
                 WHERE date = :date AND
                     contract_id = :contract_id AND
                     station_number = :station_number
                 ''' % (self.StationsDayTable),
-                self._rank_stations(date))
+                self._stations_day_compute_ranks(date))
             # return number of inserted records
             return req.rowcount
         except sqlite3.Error as error:
@@ -204,7 +235,7 @@ class Activity(object):
 
     def run(self, date):
         self._do_stations(date)
-        self._update_rank_stations(date)
+        self._stations_day_update_ranks(date)
 
 class App(object):
 
