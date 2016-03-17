@@ -148,7 +148,7 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.GlobalDayTable)
 
-    def _do_stations(self, date):
+    def _do_activity_stations(self, date):
         try:
             self._db.connection.execute(
                 '''
@@ -171,7 +171,7 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily stations activity into table [%s]" % self.StationsDayTable)
 
-    def _do_contracts(self, date):
+    def _do_activity_contracts(self, date):
         try:
             self._db.connection.execute(
                 '''
@@ -191,7 +191,7 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily contracts activity into table [%s]" % self.ContractsDayTable)
 
-    def _do_global(self, date):
+    def _do_activity_global(self, date):
         try:
             self._db.connection.execute(
                 '''
@@ -312,9 +312,9 @@ class Activity(object):
             raise jcd.common.JcdException("Database error while updating daily station activity rankings")
 
     def run(self, date):
-        self._do_stations(date)
-        self._do_contracts(date)
-        self._do_global(date)
+        self._do_activity_stations(date)
+        self._do_activity_contracts(date)
+        self._do_activity_global(date)
         self._stations_day_update_ranks(date)
 
 class App(object):
