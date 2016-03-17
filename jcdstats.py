@@ -99,7 +99,8 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                rank INTEGER,
+                rank_contract INTEGER,
+                rank_global INTEGER,
                 PRIMARY KEY (date, contract_id, station_number));
                 ''' % self.StationsDayTable)
         except sqlite3.Error as error:
@@ -116,6 +117,7 @@ class Activity(object):
                         contract_id,
                         station_number,
                         COUNT(timestamp) as num_changes,
+                        NULL,
                         NULL
                     FROM %s.%s
                     WHERE date = ?
@@ -133,7 +135,12 @@ class Activity(object):
         try:
             req = self._db.connection.execute(
                 '''
-                SELECT date, contract_id, station_number, num_changes, rank
+                SELECT date,
+                    contract_id,
+                    station_number,
+                    num_changes,
+                    rank_contract,
+                    rank_global
                 FROM %s
                 WHERE date = ?
                 ORDER BY num_changes DESC
@@ -143,7 +150,15 @@ class Activity(object):
                 if not ranks:
                     break
                 for rank in ranks:
-                    yield rank
+                    d_rank = {
+                        "date": rank[0],
+                        "contract_id": rank[1],
+                        "station_number": rank[2],
+                        "num_changes": rank[3],
+                        "rank_contract": rank[4],
+                        "rank_global": rank[5],
+                    }
+                    yield d_rank
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
@@ -154,27 +169,19 @@ class Activity(object):
         n_rank = 0
         last_value = None
         for rank in self._get_stations(date):
-            d_rank = {
-                "day": rank[0],
-                "contract_id": rank[1],
-                "station_number": rank[2],
-                "events": rank[3],
-                "rank": rank[4],
-            }
             # one more sample done
             n_total += 1
             # first
             if last_value is None:
                 n_rank = n_total
-                last_value = rank[3]
+                last_value = rank["num_changes"]
             # not the same number of events
-            if rank[3] != last_value:
+            if rank["num_changes"] != last_value:
                 n_rank = n_total
-                last_value = rank[3]
+                last_value = rank["num_changes"]
             # set rank
-            d_rank["rank"] = n_rank
-            print d_rank
-            yield d_rank
+            rank["rank_global"] = n_rank
+            yield rank
         # TODO: what to do when there is nothing ?
 
     def _update_rank_stations(self, date):
@@ -183,14 +190,13 @@ class Activity(object):
             req = self._db.connection.executemany(
                 '''
                 UPDATE %s
-                SET rank = :rank
-                WHERE date = :day AND
+                SET rank_global = :rank_global
+                WHERE date = :date AND
                     contract_id = :contract_id AND
                     station_number = :station_number
                 ''' % (self.StationsDayTable),
                 self._rank_stations(date))
             # return number of inserted records
-            print "updated", req.rowcount
             return req.rowcount
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
