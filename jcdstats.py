@@ -99,7 +99,7 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.StationsDayTable)
 
-    def _do_stations(self):
+    def _do_stations(self, date):
         try:
             self._db.connection.execute(
                 '''
@@ -109,6 +109,7 @@ class Activity(object):
                         station_number,
                         COUNT(timestamp) as events
                     FROM %s.%s
+                    WHERE day = ?
                     GROUP BY contract_id, station_number
                 )
                 INSERT OR REPLACE INTO %s
@@ -121,15 +122,16 @@ class Activity(object):
                     ON c.events < d.events
                     GROUP BY c.day, c.contract_id, c.station_number, c.events
                 ''' % (self._sample_schema,
-                    jcd.dao.ShortSamplesDAO.TableNameArchive,
-                    self.StationsDayTable))
+                       jcd.dao.ShortSamplesDAO.TableNameArchive,
+                       self.StationsDayTable),
+                (date,))
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
 
     def run(self, date):
-        self._do_stations()
+        self._do_stations(date)
 
 class App(object):
 
