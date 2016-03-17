@@ -169,7 +169,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+                "Database error while storing daily stations activity into table [%s]" % self.StationsDayTable)
 
     def _do_contracts(self, date):
         try:
@@ -189,7 +189,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+                "Database error while storing daily contracts activity into table [%s]" % self.ContractsDayTable)
 
     def _do_global(self, date):
         try:
@@ -207,7 +207,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+                "Database error while storing daily global activity into table [%s]" % self.GlobalDayTable)
 
     def _stations_day_get(self, date):
         try:
