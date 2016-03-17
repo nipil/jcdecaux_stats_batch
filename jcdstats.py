@@ -67,6 +67,70 @@ class MinMax(object):
     def run(self, date):
         self._do_stations(date)
 
+class Activity(object):
+
+    StationsDayTable = "activity_stations_day"
+
+    def __init__(self, db, sample_schema):
+        self._db = db
+        self._sample_schema = sample_schema
+        assert(self._db is not None)
+        assert(self._sample_schema is not None)
+        self._create_tables_if_necessary()
+
+    def _create_tables_if_necessary(self):
+        if not self._db.has_table(self.StationsDayTable):
+            self._create_stations_day_table()
+
+    def _create_stations_day_table(self):
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                date TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank INTEGER NOT NULL,
+                PRIMARY KEY (date, contract_id, station_number));
+                ''' % self.StationsDayTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.StationsDayTable)
+
+    def _do_stations(self):
+        try:
+            self._db.connection.execute(
+                '''
+                WITH cte_activity_station_day AS (
+                    SELECT date(timestamp,'unixepoch') as day,
+                        contract_id,
+                        station_number,
+                        COUNT(timestamp) as events
+                    FROM %s.%s
+                    GROUP BY contract_id, station_number
+                )
+                INSERT OR REPLACE INTO %s
+                    SELECT c.day,
+                        c.contract_id,
+                        c.station_number,
+                        c.events,
+                        1+COUNT(d.events)
+                    FROM cte_activity_station_day AS c LEFT JOIN cte_activity_station_day as d
+                    ON c.events < d.events
+                    GROUP BY c.day, c.contract_id, c.station_number, c.events
+                ''' % (self._sample_schema,
+                    jcd.dao.ShortSamplesDAO.TableNameArchive,
+                    self.StationsDayTable))
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+
+    def run(self, date):
+        self._do_stations()
+
 class App(object):
 
     def __init__(self, default_data_path, default_db_filename):
@@ -107,7 +171,8 @@ class App(object):
                 filename = jcd.dao.ShortSamplesDAO.get_db_file_name(schema)
                 db_stats.attach_database(filename, schema, arguments.datadir)
                 # do processing
-                MinMax(db_stats, schema).run(date)
+                #MinMax(db_stats, schema).run(date)
+                Activity(db_stats, schema).run(date)
                 # detach samples db
                 db_stats.detach_database(schema)
 
