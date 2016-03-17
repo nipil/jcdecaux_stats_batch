@@ -15,9 +15,9 @@ class MinMax(object):
         self._db = db
         self._sample_schema = sample_schema
         self._arguments = arguments
-        assert(self._db is not None)
-        assert(self._sample_schema is not None)
-        assert(self._arguments is not None)
+        assert self._db is not None
+        assert self._sample_schema is not None
+        assert self._arguments is not None
         self._create_tables_if_necessary()
 
     def _create_tables_if_necessary(self):
@@ -79,9 +79,9 @@ class Activity(object):
         self._db = db
         self._sample_schema = sample_schema
         self._arguments = arguments
-        assert(self._db is not None)
-        assert(self._sample_schema is not None)
-        assert(self._arguments is not None)
+        assert self._db is not None
+        assert self._sample_schema is not None
+        assert self._arguments is not None
         self._create_tables_if_necessary()
 
     def _create_tables_if_necessary(self):
