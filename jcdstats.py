@@ -11,11 +11,13 @@ class MinMax(object):
 
     StationsDayTable = "minmax_stations_day"
 
-    def __init__(self, db, sample_schema):
+    def __init__(self, db, sample_schema, arguments):
         self._db = db
         self._sample_schema = sample_schema
+        self._arguments = arguments
         assert(self._db is not None)
         assert(self._sample_schema is not None)
+        assert(self._arguments is not None)
         self._create_tables_if_necessary()
 
     def _create_tables_if_necessary(self):
@@ -23,6 +25,8 @@ class MinMax(object):
             self._create_stations_day_table()
 
     def _create_stations_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.StationsDayTable
         try:
             self._db.connection.execute(
                 '''
@@ -71,11 +75,13 @@ class Activity(object):
 
     StationsDayTable = "activity_stations_day"
 
-    def __init__(self, db, sample_schema):
+    def __init__(self, db, sample_schema, arguments):
         self._db = db
         self._sample_schema = sample_schema
+        self._arguments = arguments
         assert(self._db is not None)
         assert(self._sample_schema is not None)
+        assert(self._arguments is not None)
         self._create_tables_if_necessary()
 
     def _create_tables_if_necessary(self):
@@ -83,6 +89,8 @@ class Activity(object):
             self._create_stations_day_table()
 
     def _create_stations_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.StationsDayTable
         try:
             self._db.connection.execute(
                 '''
@@ -173,8 +181,8 @@ class App(object):
                 filename = jcd.dao.ShortSamplesDAO.get_db_file_name(schema)
                 db_stats.attach_database(filename, schema, arguments.datadir)
                 # do processing
-                #MinMax(db_stats, schema).run(date)
-                Activity(db_stats, schema).run(date)
+                MinMax(db_stats, schema, arguments).run(date)
+                Activity(db_stats, schema, arguments).run(date)
                 # detach samples db
                 db_stats.detach_database(schema)
 
