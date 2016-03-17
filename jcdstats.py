@@ -74,6 +74,7 @@ class MinMax(object):
 class Activity(object):
 
     StationsDayTable = "activity_stations_day"
+    ContractsDayTable = "activity_contracts_day"
 
     def __init__(self, db, sample_schema, arguments):
         self._db = db
@@ -87,6 +88,8 @@ class Activity(object):
     def _create_tables_if_necessary(self):
         if not self._db.has_table(self.StationsDayTable):
             self._create_stations_day_table()
+        if not self._db.has_table(self.ContractsDayTable):
+            self._create_contracts_day_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -107,6 +110,24 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.StationsDayTable)
+
+    def _create_contracts_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.ContractsDayTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                date TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_global INTEGER,
+                PRIMARY KEY (date, contract_id));
+                ''' % self.ContractsDayTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.ContractsDayTable)
 
     def _do_stations(self, date):
         try:
