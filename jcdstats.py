@@ -99,7 +99,7 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                rank INTEGER NOT NULL,
+                rank INTEGER,
                 PRIMARY KEY (date, contract_id, station_number));
                 ''' % self.StationsDayTable)
         except sqlite3.Error as error:
@@ -111,35 +111,94 @@ class Activity(object):
         try:
             self._db.connection.execute(
                 '''
-                WITH cte_activity_station_day AS (
-                    SELECT date(timestamp,'unixepoch') as day,
+                INSERT OR REPLACE INTO %s
+                    SELECT date(timestamp,'unixepoch') as date,
                         contract_id,
                         station_number,
-                        COUNT(timestamp) as events
+                        COUNT(timestamp) as num_changes,
+                        NULL
                     FROM %s.%s
-                    WHERE day = ?
+                    WHERE date = ?
                     GROUP BY contract_id, station_number
-                )
-                INSERT OR REPLACE INTO %s
-                    SELECT c.day,
-                        c.contract_id,
-                        c.station_number,
-                        c.events,
-                        1+COUNT(d.events)
-                    FROM cte_activity_station_day AS c LEFT JOIN cte_activity_station_day as d
-                    ON c.events < d.events
-                    GROUP BY c.day, c.contract_id, c.station_number, c.events
-                ''' % (self._sample_schema,
-                       jcd.dao.ShortSamplesDAO.TableNameArchive,
-                       self.StationsDayTable),
+                ''' % (self.StationsDayTable,
+                       self._sample_schema,
+                       jcd.dao.ShortSamplesDAO.TableNameArchive),
                 (date,))
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
 
+    def _get_stations(self, date):
+        try:
+            req = self._db.connection.execute(
+                '''
+                SELECT date, contract_id, station_number, num_changes, rank
+                FROM %s
+                WHERE date = ?
+                ORDER BY num_changes DESC
+                ''' % (self.StationsDayTable), (date,))
+            while True:
+                ranks = req.fetchmany(1000)
+                if not ranks:
+                    break
+                for rank in ranks:
+                    yield rank
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while getting daily activity ranks")
+
+    def _rank_stations(self, date):
+        n_total = 0
+        n_rank = 0
+        last_value = None
+        for rank in self._get_stations(date):
+            d_rank = {
+                "day": rank[0],
+                "contract_id": rank[1],
+                "station_number": rank[2],
+                "events": rank[3],
+                "rank": rank[4],
+            }
+            # one more sample done
+            n_total += 1
+            # first
+            if last_value is None:
+                n_rank = n_total
+                last_value = rank[3]
+            # not the same number of events
+            if rank[3] != last_value:
+                n_rank = n_total
+                last_value = rank[3]
+            # set rank
+            d_rank["rank"] = n_rank
+            print d_rank
+            yield d_rank
+        # TODO: what to do when there is nothing ?
+
+    def _update_rank_stations(self, date):
+        try:
+            # update any existing contracts
+            req = self._db.connection.executemany(
+                '''
+                UPDATE %s
+                SET rank = :rank
+                WHERE date = :day AND
+                    contract_id = :contract_id AND
+                    station_number = :station_number
+                ''' % (self.StationsDayTable),
+                self._rank_stations(date))
+            # return number of inserted records
+            print "updated", req.rowcount
+            return req.rowcount
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException("Database error while updating daily station activity rankings")
+
     def run(self, date):
         self._do_stations(date)
+        self._update_rank_stations(date)
 
 class App(object):
 
