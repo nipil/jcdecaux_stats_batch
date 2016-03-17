@@ -75,6 +75,7 @@ class Activity(object):
 
     StationsDayTable = "activity_stations_day"
     ContractsDayTable = "activity_contracts_day"
+    GlobalDayTable = "activity_global_day"
 
     def __init__(self, db, sample_schema, arguments):
         self._db = db
@@ -90,6 +91,8 @@ class Activity(object):
             self._create_stations_day_table()
         if not self._db.has_table(self.ContractsDayTable):
             self._create_contracts_day_table()
+        if not self._db.has_table(self.GlobalDayTable):
+            self._create_global_day_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -129,6 +132,22 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.ContractsDayTable)
 
+    def _create_global_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.GlobalDayTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                date TEXT NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (date));
+                ''' % self.GlobalDayTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.GlobalDayTable)
+
     def _do_stations(self, date):
         try:
             self._db.connection.execute(
@@ -166,6 +185,24 @@ class Activity(object):
                     GROUP BY contract_id
                 ''' % (self.ContractsDayTable,
                        self.StationsDayTable),
+                (date,))
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+
+    def _do_global(self, date):
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT date,
+                        SUM(num_changes) as num_changes
+                    FROM %s
+                    WHERE date = ?
+                    GROUP BY date
+                ''' % (self.GlobalDayTable,
+                       self.ContractsDayTable),
                 (date,))
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -277,6 +314,7 @@ class Activity(object):
     def run(self, date):
         self._do_stations(date)
         self._do_contracts(date)
+        self._do_global(date)
         self._stations_day_update_ranks(date)
 
 class App(object):
