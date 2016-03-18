@@ -81,6 +81,10 @@ class Activity(object):
     ContractsWeekTable = "activity_contracts_week"
     GlobalWeekTable = "activity_global_week"
 
+    StationsMonthTable = "activity_stations_month"
+    ContractsMonthTable = "activity_contracts_month"
+    GlobalMonthTable = "activity_global_month"
+
     def __init__(self, db, sample_schema, arguments):
         self._db = db
         self._sample_schema = sample_schema
@@ -104,6 +108,13 @@ class Activity(object):
             self._create_contracts_week_table()
         if not self._db.has_table(self.GlobalWeekTable):
             self._create_global_week_table()
+
+        if not self._db.has_table(self.StationsMonthTable):
+            self._create_stations_month_table()
+        if not self._db.has_table(self.ContractsMonthTable):
+            self._create_contracts_month_table()
+        if not self._db.has_table(self.GlobalMonthTable):
+            self._create_global_month_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -212,6 +223,60 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.GlobalWeekTable)
+
+    def _create_stations_month_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.StationsMonthTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_month TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_contract INTEGER,
+                rank_global INTEGER,
+                PRIMARY KEY (year_month, contract_id, station_number));
+                ''' % self.StationsMonthTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.StationsMonthTable)
+
+    def _create_contracts_month_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.ContractsMonthTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_month TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_global INTEGER,
+                PRIMARY KEY (year_month, contract_id));
+                ''' % self.ContractsMonthTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.ContractsMonthTable)
+
+    def _create_global_month_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.GlobalMonthTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_month TEXT NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (year_month));
+                ''' % self.GlobalMonthTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.GlobalMonthTable)
 
     def _do_activity_stations(self, date):
         try:
