@@ -39,7 +39,8 @@ class MinMax(object):
                 min_slots INTEGER NOT NULL,
                 max_slots INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (date, contract_id, station_number));
+                PRIMARY KEY (date, contract_id, station_number)
+                ) WITHOUT ROWID;
                 ''' % self.StationsDayTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -140,7 +141,8 @@ class Activity(object):
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (date, contract_id, station_number));
+                PRIMARY KEY (date, contract_id, station_number)
+                ) WITHOUT ROWID;
                 ''' % self.StationsDayTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -158,7 +160,8 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (date, contract_id));
+                PRIMARY KEY (date, contract_id)
+                ) WITHOUT ROWID;
                 ''' % self.ContractsDayTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -174,7 +177,8 @@ class Activity(object):
                 CREATE TABLE %s (
                 date TEXT NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (date));
+                PRIMARY KEY (date)
+                ) WITHOUT ROWID;
                 ''' % self.GlobalDayTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -194,7 +198,8 @@ class Activity(object):
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year_week, contract_id, station_number));
+                PRIMARY KEY (year_week, contract_id, station_number)
+                ) WITHOUT ROWID;
                 ''' % self.StationsWeekTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -212,7 +217,8 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year_week, contract_id));
+                PRIMARY KEY (year_week, contract_id)
+                ) WITHOUT ROWID;
                 ''' % self.ContractsWeekTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -228,7 +234,8 @@ class Activity(object):
                 CREATE TABLE %s (
                 year_week TEXT NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year_week));
+                PRIMARY KEY (year_week)
+                ) WITHOUT ROWID;
                 ''' % self.GlobalWeekTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -248,7 +255,8 @@ class Activity(object):
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year_month, contract_id, station_number));
+                PRIMARY KEY (year_month, contract_id, station_number)
+                ) WITHOUT ROWID;
                 ''' % self.StationsMonthTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -266,7 +274,8 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year_month, contract_id));
+                PRIMARY KEY (year_month, contract_id)
+                ) WITHOUT ROWID;
                 ''' % self.ContractsMonthTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -282,7 +291,8 @@ class Activity(object):
                 CREATE TABLE %s (
                 year_month TEXT NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year_month));
+                PRIMARY KEY (year_month)
+                ) WITHOUT ROWID;
                 ''' % self.GlobalMonthTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -302,7 +312,8 @@ class Activity(object):
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year, contract_id, station_number));
+                PRIMARY KEY (year, contract_id, station_number)
+                ) WITHOUT ROWID;
                 ''' % self.StationsYearTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -320,7 +331,8 @@ class Activity(object):
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year, contract_id));
+                PRIMARY KEY (year, contract_id)
+                ) WITHOUT ROWID;
                 ''' % self.ContractsYearTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -336,7 +348,8 @@ class Activity(object):
                 CREATE TABLE %s (
                 year TEXT NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year));
+                PRIMARY KEY (year)
+                ) WITHOUT ROWID;
                 ''' % self.GlobalYearTable)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
