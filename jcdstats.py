@@ -535,10 +535,10 @@ class App(object):
         )
         self._parser.add_argument(
             'date',
-            metavar='N',
+            metavar='date',
             type=str,
             nargs='+',
-            help='an integer for the accumulator')
+            help='a date for which to build stats')
 
     def run(self):
         # parse arguments
