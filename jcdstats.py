@@ -85,6 +85,10 @@ class Activity(object):
     ContractsMonthTable = "activity_contracts_month"
     GlobalMonthTable = "activity_global_month"
 
+    StationsYearTable = "activity_stations_year"
+    ContractsYearTable = "activity_contracts_year"
+    GlobalYearTable = "activity_global_year"
+
     def __init__(self, db, sample_schema, arguments):
         self._db = db
         self._sample_schema = sample_schema
@@ -115,6 +119,13 @@ class Activity(object):
             self._create_contracts_month_table()
         if not self._db.has_table(self.GlobalMonthTable):
             self._create_global_month_table()
+
+        if not self._db.has_table(self.StationsYearTable):
+            self._create_stations_year_table()
+        if not self._db.has_table(self.ContractsYearTable):
+            self._create_contracts_year_table()
+        if not self._db.has_table(self.GlobalYearTable):
+            self._create_global_year_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -277,6 +288,60 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.GlobalMonthTable)
+
+    def _create_stations_year_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.StationsYearTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_contract INTEGER,
+                rank_global INTEGER,
+                PRIMARY KEY (year, contract_id, station_number));
+                ''' % self.StationsYearTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.StationsYearTable)
+
+    def _create_contracts_year_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.ContractsYearTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_global INTEGER,
+                PRIMARY KEY (year, contract_id));
+                ''' % self.ContractsYearTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.ContractsYearTable)
+
+    def _create_global_year_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.GlobalYearTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year TEXT NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (year));
+                ''' % self.GlobalYearTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.GlobalYearTable)
 
     def _do_activity_stations(self, date):
         try:
