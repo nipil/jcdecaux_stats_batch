@@ -135,13 +135,13 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                date TEXT NOT NULL,
+                start_of_day INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (date, contract_id, station_number)
+                PRIMARY KEY (start_of_day, contract_id, station_number)
                 ) WITHOUT ROWID;
                 ''' % self.StationsDayTable)
         except sqlite3.Error as error:
@@ -156,11 +156,11 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                date TEXT NOT NULL,
+                start_of_day INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (date, contract_id)
+                PRIMARY KEY (start_of_day, contract_id)
                 ) WITHOUT ROWID;
                 ''' % self.ContractsDayTable)
         except sqlite3.Error as error:
@@ -175,9 +175,9 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                date TEXT NOT NULL,
+                start_of_day INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (date)
+                PRIMARY KEY (start_of_day)
                 ) WITHOUT ROWID;
                 ''' % self.GlobalDayTable)
         except sqlite3.Error as error:
@@ -192,13 +192,13 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_week TEXT NOT NULL,
+                start_of_week INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year_week, contract_id, station_number)
+                PRIMARY KEY (start_of_week, contract_id, station_number)
                 ) WITHOUT ROWID;
                 ''' % self.StationsWeekTable)
         except sqlite3.Error as error:
@@ -213,11 +213,11 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_week TEXT NOT NULL,
+                start_of_week INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year_week, contract_id)
+                PRIMARY KEY (start_of_week, contract_id)
                 ) WITHOUT ROWID;
                 ''' % self.ContractsWeekTable)
         except sqlite3.Error as error:
@@ -232,9 +232,9 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_week TEXT NOT NULL,
+                start_of_week INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year_week)
+                PRIMARY KEY (start_of_week)
                 ) WITHOUT ROWID;
                 ''' % self.GlobalWeekTable)
         except sqlite3.Error as error:
@@ -249,13 +249,13 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_month TEXT NOT NULL,
+                start_of_month INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year_month, contract_id, station_number)
+                PRIMARY KEY (start_of_month, contract_id, station_number)
                 ) WITHOUT ROWID;
                 ''' % self.StationsMonthTable)
         except sqlite3.Error as error:
@@ -270,11 +270,11 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_month TEXT NOT NULL,
+                start_of_month INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year_month, contract_id)
+                PRIMARY KEY (start_of_month, contract_id)
                 ) WITHOUT ROWID;
                 ''' % self.ContractsMonthTable)
         except sqlite3.Error as error:
@@ -289,9 +289,9 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year_month TEXT NOT NULL,
+                start_of_month INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year_month)
+                PRIMARY KEY (start_of_month)
                 ) WITHOUT ROWID;
                 ''' % self.GlobalMonthTable)
         except sqlite3.Error as error:
@@ -306,13 +306,13 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year TEXT NOT NULL,
+                start_of_year INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_contract INTEGER,
                 rank_global INTEGER,
-                PRIMARY KEY (year, contract_id, station_number)
+                PRIMARY KEY (start_of_year, contract_id, station_number)
                 ) WITHOUT ROWID;
                 ''' % self.StationsYearTable)
         except sqlite3.Error as error:
@@ -327,11 +327,11 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year TEXT NOT NULL,
+                start_of_year INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
                 rank_global INTEGER,
-                PRIMARY KEY (year, contract_id)
+                PRIMARY KEY (start_of_year, contract_id)
                 ) WITHOUT ROWID;
                 ''' % self.ContractsYearTable)
         except sqlite3.Error as error:
@@ -346,9 +346,9 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                year TEXT NOT NULL,
+                start_of_year INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (year)
+                PRIMARY KEY (start_of_year)
                 ) WITHOUT ROWID;
                 ''' % self.GlobalYearTable)
         except sqlite3.Error as error:
@@ -357,23 +357,29 @@ class Activity(object):
                 "Database error while creating table [%s]" % self.GlobalYearTable)
 
     def _do_activity_stations(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT date(timestamp,'unixepoch') as date,
+                    SELECT strftime('%%s',
+                            timestamp,
+                            'unixepoch',
+                            'start of day'),
                         contract_id,
                         station_number,
-                        COUNT(timestamp) as num_changes,
+                        COUNT(timestamp),
                         NULL,
                         NULL
                     FROM %s.%s
-                    WHERE date = ?
+                    WHERE timestamp BETWEEN
+                        strftime('%%s', :date, 'start of day') AND
+                        strftime('%%s', :date, 'start of day', '+1 day') - 1
                     GROUP BY contract_id, station_number
                 ''' % (self.StationsDayTable,
                        self._sample_schema,
                        jcd.dao.ShortSamplesDAO.TableNameArchive),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
@@ -384,12 +390,12 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT date,
+                    SELECT start_of_day,
                         contract_id,
-                        SUM(num_changes) as num_changes,
+                        SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE date = ?
+                    WHERE start_of_day = strftime('%%s', ?)
                     GROUP BY contract_id
                 ''' % (self.ContractsDayTable,
                        self.StationsDayTable),
@@ -404,11 +410,11 @@ class Activity(object):
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT date,
+                    SELECT start_of_day,
                         SUM(num_changes) as num_changes
                     FROM %s
-                    WHERE date = ?
-                    GROUP BY date
+                    WHERE start_of_day = strftime('%%s', ?)
+                    GROUP BY start_of_day
                 ''' % (self.GlobalDayTable,
                        self.ContractsDayTable),
                 (date,))
@@ -421,14 +427,14 @@ class Activity(object):
         try:
             req = self._db.connection.execute(
                 '''
-                SELECT date,
+                SELECT start_of_day,
                     contract_id,
                     station_number,
                     num_changes,
                     rank_contract,
                     rank_global
                 FROM %s
-                WHERE date = ?
+                WHERE start_of_day = strftime('%%s', ?)
                 ORDER BY num_changes DESC
                 ''' % (self.StationsDayTable), (date,))
             while True:
@@ -437,7 +443,7 @@ class Activity(object):
                     break
                 for rank in ranks:
                     d_rank = {
-                        "date": rank[0],
+                        "start_of_day": rank[0],
                         "contract_id": rank[1],
                         "station_number": rank[2],
                         "num_changes": rank[3],
@@ -508,7 +514,7 @@ class Activity(object):
                 UPDATE %s
                 SET rank_global = :rank_global,
                     rank_contract = :rank_contract
-                WHERE date = :date AND
+                WHERE start_of_day = :start_of_day AND
                     contract_id = :contract_id AND
                     station_number = :station_number
                 ''' % (self.StationsDayTable),
