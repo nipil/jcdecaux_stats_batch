@@ -77,6 +77,10 @@ class Activity(object):
     ContractsDayTable = "activity_contracts_day"
     GlobalDayTable = "activity_global_day"
 
+    StationsWeekTable = "activity_stations_week"
+    ContractsWeekTable = "activity_contracts_week"
+    GlobalWeekTable = "activity_global_week"
+
     def __init__(self, db, sample_schema, arguments):
         self._db = db
         self._sample_schema = sample_schema
@@ -93,6 +97,13 @@ class Activity(object):
             self._create_contracts_day_table()
         if not self._db.has_table(self.GlobalDayTable):
             self._create_global_day_table()
+
+        if not self._db.has_table(self.StationsWeekTable):
+            self._create_stations_week_table()
+        if not self._db.has_table(self.ContractsWeekTable):
+            self._create_contracts_week_table()
+        if not self._db.has_table(self.GlobalWeekTable):
+            self._create_global_week_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -147,6 +158,60 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % self.GlobalDayTable)
+
+    def _create_stations_week_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.StationsWeekTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_week TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_contract INTEGER,
+                rank_global INTEGER,
+                PRIMARY KEY (year_week, contract_id, station_number));
+                ''' % self.StationsWeekTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.StationsWeekTable)
+
+    def _create_contracts_week_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.ContractsWeekTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_week TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_global INTEGER,
+                PRIMARY KEY (year_week, contract_id));
+                ''' % self.ContractsWeekTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.ContractsWeekTable)
+
+    def _create_global_week_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.GlobalWeekTable
+        try:
+            self._db.connection.execute(
+                '''
+                CREATE TABLE %s (
+                year_week TEXT NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (year_week));
+                ''' % self.GlobalWeekTable)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while creating table [%s]" % self.GlobalWeekTable)
 
     def _do_activity_stations(self, date):
         try:
