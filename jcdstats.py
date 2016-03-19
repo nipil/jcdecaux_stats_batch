@@ -423,6 +423,31 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily global activity into table [%s]" % self.GlobalDayTable)
 
+    def _do_activity_stations_week(self, date):
+        params = {"date": date}
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT start_of_day - strftime('%%w', start_of_day, 'unixepoch', '-1 day') * 86400,
+                        contract_id,
+                        station_number,
+                        SUM(num_changes),
+                        NULL,
+                        NULL
+                    FROM %s
+                    WHERE start_of_day BETWEEN
+                        strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day') AND
+                        strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day', '+7 days') - 1
+                    GROUP BY contract_id, station_number
+                ''' % (self.StationsWeekTable,
+                       self.StationsDayTable),
+                params)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing monthly stations activity into table [%s]" % self.StationsWeekTable)
+
     def _do_activity_stations_month(self, date):
 
         params = {"date": date}
@@ -660,6 +685,7 @@ class Activity(object):
 
     def run(self, date):
         self._do_activity_stations_day(date)
+        self._do_activity_stations_week(date)
         self._do_activity_stations_month(date)
         self._do_activity_stations_year(date)
         self._do_activity_contracts_day(date)
