@@ -473,6 +473,24 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing monthly contracts activity into table [%s]" % self.ContractsMonthTable)
 
+    def _do_activity_global_month(self, date):
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT start_of_month,
+                        SUM(num_changes) as num_changes
+                    FROM %s
+                    WHERE start_of_month = strftime('%%s', ?, 'start of month')
+                    GROUP BY start_of_month
+                ''' % (self.GlobalMonthTable,
+                       self.ContractsMonthTable),
+                (date,))
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing monthly global activity into table [%s]" % self.GlobalDayTable)
+
     def _do_activity_stations_year(self, date):
         params = {"date": date}
         try:
@@ -610,6 +628,7 @@ class Activity(object):
         self._do_activity_contracts_day(date)
         self._do_activity_contracts_month(date)
         self._do_activity_global_day(date)
+        self._do_activity_global_month(date)
         self._stations_day_update_ranks(date)
 
 class App(object):
