@@ -448,6 +448,27 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing weekly stations activity into table [%s]" % self.StationsWeekTable)
 
+    def _do_activity_contracts_week(self, date):
+        params = {"date": date}
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT start_of_week,
+                        contract_id,
+                        SUM(num_changes),
+                        NULL
+                    FROM %s
+                    WHERE start_of_week = strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day')
+                    GROUP BY contract_id
+                ''' % (self.ContractsWeekTable,
+                       self.StationsWeekTable),
+                params)
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing weekly contracts activity into table [%s]" % self.ContractsWeekTable)
+
     def _do_activity_stations_month(self, date):
 
         params = {"date": date}
@@ -689,6 +710,7 @@ class Activity(object):
         self._do_activity_stations_month(date)
         self._do_activity_stations_year(date)
         self._do_activity_contracts_day(date)
+        self._do_activity_contracts_week(date)
         self._do_activity_contracts_month(date)
         self._do_activity_contracts_year(date)
         self._do_activity_global_day(date)
