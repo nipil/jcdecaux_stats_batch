@@ -453,7 +453,6 @@ class Activity(object):
                 "Database error while storing monthly stations activity into table [%s]" % self.StationsMonthTable)
 
     def _do_activity_contracts_month(self, date):
-        print date
         try:
             self._db.connection.execute(
                 '''
@@ -518,6 +517,27 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing yearly stations activity into table [%s]" % self.StationsYearTable)
+
+    def _do_activity_contracts_year(self, date):
+        print date
+        try:
+            self._db.connection.execute(
+                '''
+                INSERT OR REPLACE INTO %s
+                    SELECT start_of_year,
+                        contract_id,
+                        SUM(num_changes),
+                        NULL
+                    FROM %s
+                    WHERE start_of_year = strftime('%%s', ?, 'start of year')
+                    GROUP BY contract_id
+                ''' % (self.ContractsYearTable,
+                       self.StationsYearTable),
+                (date,))
+        except sqlite3.Error as error:
+            print "%s: %s" % (type(error).__name__, error)
+            raise jcd.common.JcdException(
+                "Database error while storing yearly contracts activity into table [%s]" % self.ContractsMonthTable)
 
     def _stations_day_get(self, date):
         try:
@@ -627,6 +647,7 @@ class Activity(object):
         self._do_activity_stations_year(date)
         self._do_activity_contracts_day(date)
         self._do_activity_contracts_month(date)
+        self._do_activity_contracts_year(date)
         self._do_activity_global_day(date)
         self._do_activity_global_month(date)
         self._stations_day_update_ranks(date)
