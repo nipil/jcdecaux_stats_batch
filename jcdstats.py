@@ -395,7 +395,7 @@ class Activity(object):
                         SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', ?)
+                    WHERE start_of_day = strftime('%%s', ?, 'start of day')
                     GROUP BY contract_id
                 ''' % (self.ContractsDayTable,
                        self.StationsDayTable),
@@ -413,7 +413,7 @@ class Activity(object):
                     SELECT start_of_day,
                         SUM(num_changes) as num_changes
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', ?)
+                    WHERE start_of_day = strftime('%%s', ?, 'start of day')
                     GROUP BY start_of_day
                 ''' % (self.GlobalDayTable,
                        self.ContractsDayTable),
