@@ -446,7 +446,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing monthly stations activity into table [%s]" % self.StationsWeekTable)
+                "Database error while storing weekly stations activity into table [%s]" % self.StationsWeekTable)
 
     def _do_activity_stations_month(self, date):
 
@@ -513,7 +513,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing monthly global activity into table [%s]" % self.GlobalDayTable)
+                "Database error while storing monthly global activity into table [%s]" % self.GlobalMonthTable)
 
     def _do_activity_stations_year(self, date):
         params = {"date": date}
@@ -561,7 +561,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing yearly contracts activity into table [%s]" % self.ContractsMonthTable)
+                "Database error while storing yearly contracts activity into table [%s]" % self.ContractsYearTable)
 
     def _do_activity_global_year(self, date):
         try:
@@ -579,7 +579,7 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing yearly global activity into table [%s]" % self.GlobalDayTable)
+                "Database error while storing yearly global activity into table [%s]" % self.GlobalYearTable)
 
     def _stations_day_get(self, date):
         try:
