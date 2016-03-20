@@ -105,28 +105,28 @@ class Activity(object):
         if not self._db.has_table(self.ContractsDayTable):
             self._create_table_contracts_custom(self.ContractsDayTable, "start_of_day")
         if not self._db.has_table(self.GlobalDayTable):
-            self._create_global_day_table()
+            self._create_table_global_custom(self.GlobalDayTable, "start_of_day")
 
         if not self._db.has_table(self.StationsWeekTable):
             self._create_table_stations_custom(self.StationsWeekTable, "start_of_week")
         if not self._db.has_table(self.ContractsWeekTable):
             self._create_table_contracts_custom(self.ContractsWeekTable, "start_of_week")
         if not self._db.has_table(self.GlobalWeekTable):
-            self._create_global_week_table()
+            self._create_table_global_custom(self.GlobalWeekTable, "start_of_week")
 
         if not self._db.has_table(self.StationsMonthTable):
             self._create_table_stations_custom(self.StationsMonthTable, "start_of_month")
         if not self._db.has_table(self.ContractsMonthTable):
             self._create_table_contracts_custom(self.ContractsMonthTable, "start_of_month")
         if not self._db.has_table(self.GlobalMonthTable):
-            self._create_global_month_table()
+            self._create_table_global_custom(self.GlobalMonthTable, "start_of_month")
 
         if not self._db.has_table(self.StationsYearTable):
             self._create_table_stations_custom(self.StationsYearTable, "start_of_year")
         if not self._db.has_table(self.ContractsYearTable):
             self._create_table_contracts_custom(self.ContractsYearTable, "start_of_year")
         if not self._db.has_table(self.GlobalYearTable):
-            self._create_global_year_table()
+            self._create_table_global_custom(self.GlobalYearTable, "start_of_year")
 
     def _create_table_stations_custom(self, table_name, time_key_name):
         if self._arguments.verbose:
@@ -168,73 +168,22 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % table_name)
 
-    def _create_global_day_table(self):
+    def _create_table_global_custom(self, table_name, time_key_name):
         if self._arguments.verbose:
-            print "Creating table", self.GlobalDayTable
+            print "Creating table", table_name
         try:
             self._db.connection.execute(
                 '''
                 CREATE TABLE %s (
-                start_of_day INTEGER NOT NULL,
+                %s INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (start_of_day)
+                PRIMARY KEY (%s)
                 ) WITHOUT ROWID;
-                ''' % self.GlobalDayTable)
+                ''' % (table_name, time_key_name, time_key_name))
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % self.GlobalDayTable)
-
-    def _create_global_week_table(self):
-        if self._arguments.verbose:
-            print "Creating table", self.GlobalWeekTable
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                start_of_week INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                PRIMARY KEY (start_of_week)
-                ) WITHOUT ROWID;
-                ''' % self.GlobalWeekTable)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % self.GlobalWeekTable)
-
-    def _create_global_month_table(self):
-        if self._arguments.verbose:
-            print "Creating table", self.GlobalMonthTable
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                start_of_month INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                PRIMARY KEY (start_of_month)
-                ) WITHOUT ROWID;
-                ''' % self.GlobalMonthTable)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % self.GlobalMonthTable)
-
-    def _create_global_year_table(self):
-        if self._arguments.verbose:
-            print "Creating table", self.GlobalYearTable
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                start_of_year INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                PRIMARY KEY (start_of_year)
-                ) WITHOUT ROWID;
-                ''' % self.GlobalYearTable)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % self.GlobalYearTable)
+                "Database error while creating table [%s]" % table_name)
 
     def _do_activity_stations_day(self, date):
         params = {"date": date}
