@@ -456,6 +456,7 @@ class Activity(object):
                 "Database error while storing yearly global activity into table [%s]" % self.GlobalYearTable)
 
     def _stations_day_get(self, date):
+        params = {"date": date}
         try:
             req = self._db.connection.execute(
                 '''
@@ -466,9 +467,10 @@ class Activity(object):
                     rank_contract,
                     rank_global
                 FROM %s
-                WHERE start_of_day = strftime('%%s', ?)
+                WHERE start_of_day = strftime('%%s', :date)
                 ORDER BY num_changes DESC
-                ''' % (self.StationsDayTable), (date,))
+                ''' % (self.StationsDayTable),
+                params)
             while True:
                 ranks = req.fetchmany(1000)
                 if not ranks:
