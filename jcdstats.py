@@ -215,6 +215,7 @@ class Activity(object):
                 "Database error while storing daily stations activity into table [%s]" % self.StationsDayTable)
 
     def _do_activity_contracts_day(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -224,17 +225,18 @@ class Activity(object):
                         SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', ?, 'start of day')
+                    WHERE start_of_day = strftime('%%s', :date, 'start of day')
                     GROUP BY contract_id
                 ''' % (self.ContractsDayTable,
                        self.StationsDayTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing daily contracts activity into table [%s]" % self.ContractsDayTable)
 
     def _do_activity_global_day(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -242,11 +244,11 @@ class Activity(object):
                     SELECT start_of_day,
                         SUM(num_changes) as num_changes
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', ?, 'start of day')
+                    WHERE start_of_day = strftime('%%s', :date, 'start of day')
                     GROUP BY start_of_day
                 ''' % (self.GlobalDayTable,
                        self.ContractsDayTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
@@ -318,7 +320,6 @@ class Activity(object):
                 "Database error while storing weekly global activity into table [%s]" % self.GlobalWeekTable)
 
     def _do_activity_stations_month(self, date):
-
         params = {"date": date}
         try:
             self._db.connection.execute(
@@ -347,6 +348,7 @@ class Activity(object):
                 "Database error while storing monthly stations activity into table [%s]" % self.StationsMonthTable)
 
     def _do_activity_contracts_month(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -356,17 +358,18 @@ class Activity(object):
                         SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE start_of_month = strftime('%%s', ?, 'start of month')
+                    WHERE start_of_month = strftime('%%s', :date, 'start of month')
                     GROUP BY contract_id
                 ''' % (self.ContractsMonthTable,
                        self.StationsMonthTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing monthly contracts activity into table [%s]" % self.ContractsMonthTable)
 
     def _do_activity_global_month(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -374,11 +377,11 @@ class Activity(object):
                     SELECT start_of_month,
                         SUM(num_changes) as num_changes
                     FROM %s
-                    WHERE start_of_month = strftime('%%s', ?, 'start of month')
+                    WHERE start_of_month = strftime('%%s', :date, 'start of month')
                     GROUP BY start_of_month
                 ''' % (self.GlobalMonthTable,
                        self.ContractsMonthTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
@@ -413,6 +416,7 @@ class Activity(object):
                 "Database error while storing yearly stations activity into table [%s]" % self.StationsYearTable)
 
     def _do_activity_contracts_year(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -422,17 +426,18 @@ class Activity(object):
                         SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE start_of_year = strftime('%%s', ?, 'start of year')
+                    WHERE start_of_year = strftime('%%s', :date, 'start of year')
                     GROUP BY contract_id
                 ''' % (self.ContractsYearTable,
                        self.StationsYearTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing yearly contracts activity into table [%s]" % self.ContractsYearTable)
 
     def _do_activity_global_year(self, date):
+        params = {"date": date}
         try:
             self._db.connection.execute(
                 '''
@@ -440,11 +445,11 @@ class Activity(object):
                     SELECT start_of_year,
                         SUM(num_changes) as num_changes
                     FROM %s
-                    WHERE start_of_year = strftime('%%s', ?, 'start of year')
+                    WHERE start_of_year = strftime('%%s', :date, 'start of year')
                     GROUP BY start_of_year
                 ''' % (self.GlobalYearTable,
                        self.ContractsYearTable),
-                (date,))
+                params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
