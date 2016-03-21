@@ -232,83 +232,28 @@ class Activity(object):
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily contracts activity into table [%s]" % self.ContractsDayTable)
+                "Database error while storing daily contracts activity into table [%s]" % params["target_table"])
 
-    def _do_activity_global_day(self, date):
-        params = {"date": date}
+    def _do_activity_global_custom(self, params):
         try:
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT start_of_day,
-                        SUM(num_changes) as num_changes
+                    SELECT %s,
+                        SUM(num_changes)
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', :date, 'start of day')
-                    GROUP BY start_of_day
-                ''' % (self.GlobalDayTable,
-                       self.ContractsDayTable),
+                    WHERE %s
+                    GROUP BY %s
+                ''' % (params["target_table"],
+                       params["time_select"],
+                       params["source_table"],
+                       params["where_clause"],
+                       params["time_select"]),
                 params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily global activity into table [%s]" % self.GlobalDayTable)
-
-    def _do_activity_global_week(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_week,
-                        SUM(num_changes) as num_changes
-                    FROM %s
-                    WHERE start_of_week = strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day')
-                    GROUP BY start_of_week
-                ''' % (self.GlobalWeekTable,
-                       self.ContractsWeekTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing weekly global activity into table [%s]" % self.GlobalWeekTable)
-
-    def _do_activity_global_month(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_month,
-                        SUM(num_changes) as num_changes
-                    FROM %s
-                    WHERE start_of_month = strftime('%%s', :date, 'start of month')
-                    GROUP BY start_of_month
-                ''' % (self.GlobalMonthTable,
-                       self.ContractsMonthTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing monthly global activity into table [%s]" % self.GlobalMonthTable)
-
-    def _do_activity_global_year(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_year,
-                        SUM(num_changes) as num_changes
-                    FROM %s
-                    WHERE start_of_year = strftime('%%s', :date, 'start of year')
-                    GROUP BY start_of_year
-                ''' % (self.GlobalYearTable,
-                       self.ContractsYearTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing yearly global activity into table [%s]" % self.GlobalYearTable)
+                "Database error while storing daily global activity into table [%s]" % params["target_table"])
 
     def _stations_day_get(self, date):
         params = {"date": date}
@@ -483,10 +428,34 @@ class Activity(object):
             "source_table": self.StationsYearTable,
             "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
         })
-        self._do_activity_global_day(date)
-        self._do_activity_global_week(date)
-        self._do_activity_global_month(date)
-        self._do_activity_global_year(date)
+        self._do_activity_global_custom({
+            "date": date,
+            "target_table": self.GlobalDayTable,
+            "time_select": "start_of_day",
+            "source_table": self.ContractsDayTable,
+            "where_clause": "start_of_day = strftime('%s', :date, 'start of day')",
+        })
+        self._do_activity_global_custom({
+            "date": date,
+            "target_table": self.GlobalWeekTable,
+            "time_select": "start_of_week",
+            "source_table": self.ContractsWeekTable,
+            "where_clause": "start_of_week = strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
+        })
+        self._do_activity_global_custom({
+            "date": date,
+            "target_table": self.GlobalMonthTable,
+            "time_select": "start_of_month",
+            "source_table": self.ContractsMonthTable,
+            "where_clause": "start_of_month = strftime('%s', :date, 'start of month')",
+        })
+        self._do_activity_global_custom({
+            "date": date,
+            "target_table": self.GlobalYearTable,
+            "time_select": "start_of_year",
+            "source_table": self.ContractsYearTable,
+            "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
+        })
         self._stations_day_update_ranks(date)
 
 class App(object):
