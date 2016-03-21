@@ -186,6 +186,8 @@ class Activity(object):
                 "Database error while creating table [%s]" % table_name)
 
     def _do_activity_stations_custom(self, params):
+        if self._arguments.verbose:
+            print "Update table", params["target_table"], "for", params["date"]
         try:
             self._db.connection.execute(
                 '''
@@ -213,6 +215,8 @@ class Activity(object):
                 "Database error while storing stations activity into table [%s]" % params["target_table"])
 
     def _do_activity_contracts_custom(self, params):
+        if self._arguments.verbose:
+            print "Update table", params["target_table"], "for", params["date"]
         try:
             self._db.connection.execute(
                 '''
@@ -235,6 +239,8 @@ class Activity(object):
                 "Database error while storing daily contracts activity into table [%s]" % params["target_table"])
 
     def _do_activity_global_custom(self, params):
+        if self._arguments.verbose:
+            print "Update table", params["target_table"], "for", params["date"]
         try:
             self._db.connection.execute(
                 '''
