@@ -185,34 +185,32 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while creating table [%s]" % table_name)
 
-    def _do_activity_stations_day(self, date):
-        params = {"date": date}
+    def _do_activity_stations_custom(self, params):
         try:
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT strftime('%%s',
-                            timestamp,
-                            'unixepoch',
-                            'start of day'),
+                    SELECT %s,
                         contract_id,
                         station_number,
-                        COUNT(timestamp),
+                        %s,
                         NULL,
                         NULL
-                    FROM %s.%s
-                    WHERE timestamp BETWEEN
-                        strftime('%%s', :date, 'start of day') AND
-                        strftime('%%s', :date, 'start of day', '+1 day') - 1
+                    FROM %s
+                    WHERE %s BETWEEN %s AND %s
                     GROUP BY contract_id, station_number
-                ''' % (self.StationsDayTable,
-                       self._sample_schema,
-                       jcd.dao.ShortSamplesDAO.TableNameArchive),
+                ''' % (params["target_table"],
+                       params["time_select"],
+                       params["aggregate_select"],
+                       params["source_table"],
+                       params["where_select"],
+                       params["between_first"],
+                       params["between_last"]),
                 params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
-                "Database error while storing daily stations activity into table [%s]" % self.StationsDayTable)
+                "Database error while storing stations activity into table [%s]" % params["target_table"])
 
     def _do_activity_contracts_day(self, date):
         params = {"date": date}
@@ -254,31 +252,6 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily global activity into table [%s]" % self.GlobalDayTable)
 
-    def _do_activity_stations_week(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_day - strftime('%%w', start_of_day, 'unixepoch', '-1 day') * 86400,
-                        contract_id,
-                        station_number,
-                        SUM(num_changes),
-                        NULL,
-                        NULL
-                    FROM %s
-                    WHERE start_of_day BETWEEN
-                        strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day') AND
-                        strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day', '+7 days') - 1
-                    GROUP BY contract_id, station_number
-                ''' % (self.StationsWeekTable,
-                       self.StationsDayTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing weekly stations activity into table [%s]" % self.StationsWeekTable)
-
     def _do_activity_contracts_week(self, date):
         params = {"date": date}
         try:
@@ -319,34 +292,6 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing weekly global activity into table [%s]" % self.GlobalWeekTable)
 
-    def _do_activity_stations_month(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT strftime('%%s',
-                            start_of_day,
-                            'unixepoch',
-                            'start of month'),
-                        contract_id,
-                        station_number,
-                        SUM(num_changes),
-                        NULL,
-                        NULL
-                    FROM %s
-                    WHERE start_of_day BETWEEN
-                        strftime('%%s', :date, 'start of month') AND
-                        strftime('%%s', :date, 'start of month', '+1 month') - 1
-                    GROUP BY contract_id, station_number
-                ''' % (self.StationsMonthTable,
-                       self.StationsDayTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing monthly stations activity into table [%s]" % self.StationsMonthTable)
-
     def _do_activity_contracts_month(self, date):
         params = {"date": date}
         try:
@@ -386,34 +331,6 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing monthly global activity into table [%s]" % self.GlobalMonthTable)
-
-    def _do_activity_stations_year(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT strftime('%%s',
-                            start_of_month,
-                            'unixepoch',
-                            'start of year'),
-                        contract_id,
-                        station_number,
-                        SUM(num_changes),
-                        NULL,
-                        NULL
-                    FROM %s
-                    WHERE start_of_month BETWEEN
-                        strftime('%%s', :date, 'start of year') AND
-                        strftime('%%s', :date, 'start of year', '+1 year') - 1
-                    GROUP BY contract_id, station_number
-                ''' % (self.StationsYearTable,
-                       self.StationsMonthTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing yearly stations activity into table [%s]" % self.StationsYearTable)
 
     def _do_activity_contracts_year(self, date):
         params = {"date": date}
@@ -560,10 +477,46 @@ class Activity(object):
             raise jcd.common.JcdException("Database error while updating daily station activity rankings")
 
     def run(self, date):
-        self._do_activity_stations_day(date)
-        self._do_activity_stations_week(date)
-        self._do_activity_stations_month(date)
-        self._do_activity_stations_year(date)
+        self._do_activity_stations_custom({
+            "date": date,
+            "target_table": self.StationsDayTable,
+            "time_select": "strftime('%s', timestamp, 'unixepoch', 'start of day')",
+            "aggregate_select": "COUNT(timestamp)",
+            "source_table": "%s.%s" % (self._sample_schema, jcd.dao.ShortSamplesDAO.TableNameArchive),
+            "where_select": "timestamp",
+            "between_first": "strftime('%s', :date, 'start of day')",
+            "between_last": "strftime('%s', :date, 'start of day', '+1 day') - 1"
+        })
+        self._do_activity_stations_custom({
+            "date": date,
+            "target_table": self.StationsWeekTable,
+            "time_select": "start_of_day - strftime('%w', start_of_day, 'unixepoch', '-1 day') * 86400",
+            "aggregate_select": "SUM(num_changes)",
+            "source_table": self.StationsDayTable,
+            "where_select": "start_of_day",
+            "between_first": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
+            "between_last": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day', '+7 days') - 1"
+        })
+        self._do_activity_stations_custom({
+            "date": date,
+            "target_table": self.StationsMonthTable,
+            "time_select": "strftime('%s', start_of_day, 'unixepoch', 'start of month')",
+            "aggregate_select": "SUM(num_changes)",
+            "source_table": self.StationsDayTable,
+            "where_select": "start_of_day",
+            "between_first": "strftime('%s', :date, 'start of month')",
+            "between_last": "strftime('%s', :date, 'start of month', '+1 month') - 1"
+        })
+        self._do_activity_stations_custom({
+            "date": date,
+            "target_table": self.StationsYearTable,
+            "time_select": "strftime('%s', start_of_month, 'unixepoch', 'start of year')",
+            "aggregate_select": "SUM(num_changes)",
+            "source_table": self.StationsMonthTable,
+            "where_select": "start_of_month",
+            "between_first": "strftime('%s', :date, 'start of year')",
+            "between_last": "strftime('%s', :date, 'start of year', '+1 year') - 1"
+        })
         self._do_activity_contracts_day(date)
         self._do_activity_contracts_week(date)
         self._do_activity_contracts_month(date)
