@@ -212,21 +212,22 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing stations activity into table [%s]" % params["target_table"])
 
-    def _do_activity_contracts_day(self, date):
-        params = {"date": date}
+    def _do_activity_contracts_custom(self, params):
         try:
             self._db.connection.execute(
                 '''
                 INSERT OR REPLACE INTO %s
-                    SELECT start_of_day,
+                    SELECT %s,
                         contract_id,
                         SUM(num_changes),
                         NULL
                     FROM %s
-                    WHERE start_of_day = strftime('%%s', :date, 'start of day')
+                    WHERE %s
                     GROUP BY contract_id
-                ''' % (self.ContractsDayTable,
-                       self.StationsDayTable),
+                ''' % (params["target_table"],
+                       params["time_select"],
+                       params["source_table"],
+                       params["where_clause"]),
                 params)
         except sqlite3.Error as error:
             print "%s: %s" % (type(error).__name__, error)
@@ -252,27 +253,6 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing daily global activity into table [%s]" % self.GlobalDayTable)
 
-    def _do_activity_contracts_week(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_week,
-                        contract_id,
-                        SUM(num_changes),
-                        NULL
-                    FROM %s
-                    WHERE start_of_week = strftime('%%s', :date, '-' || strftime('%%w', :date, '-1 day') || ' days', 'start of day')
-                    GROUP BY contract_id
-                ''' % (self.ContractsWeekTable,
-                       self.StationsWeekTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing weekly contracts activity into table [%s]" % self.ContractsWeekTable)
-
     def _do_activity_global_week(self, date):
         params = {"date": date}
         try:
@@ -292,27 +272,6 @@ class Activity(object):
             raise jcd.common.JcdException(
                 "Database error while storing weekly global activity into table [%s]" % self.GlobalWeekTable)
 
-    def _do_activity_contracts_month(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_month,
-                        contract_id,
-                        SUM(num_changes),
-                        NULL
-                    FROM %s
-                    WHERE start_of_month = strftime('%%s', :date, 'start of month')
-                    GROUP BY contract_id
-                ''' % (self.ContractsMonthTable,
-                       self.StationsMonthTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing monthly contracts activity into table [%s]" % self.ContractsMonthTable)
-
     def _do_activity_global_month(self, date):
         params = {"date": date}
         try:
@@ -331,27 +290,6 @@ class Activity(object):
             print "%s: %s" % (type(error).__name__, error)
             raise jcd.common.JcdException(
                 "Database error while storing monthly global activity into table [%s]" % self.GlobalMonthTable)
-
-    def _do_activity_contracts_year(self, date):
-        params = {"date": date}
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT start_of_year,
-                        contract_id,
-                        SUM(num_changes),
-                        NULL
-                    FROM %s
-                    WHERE start_of_year = strftime('%%s', :date, 'start of year')
-                    GROUP BY contract_id
-                ''' % (self.ContractsYearTable,
-                       self.StationsYearTable),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing yearly contracts activity into table [%s]" % self.ContractsYearTable)
 
     def _do_activity_global_year(self, date):
         params = {"date": date}
@@ -517,10 +455,34 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of year')",
             "between_last": "strftime('%s', :date, 'start of year', '+1 year') - 1"
         })
-        self._do_activity_contracts_day(date)
-        self._do_activity_contracts_week(date)
-        self._do_activity_contracts_month(date)
-        self._do_activity_contracts_year(date)
+        self._do_activity_contracts_custom({
+            "date": date,
+            "target_table": self.ContractsDayTable,
+            "time_select": "start_of_day",
+            "source_table": self.StationsDayTable,
+            "where_clause": "start_of_day = strftime('%s', :date, 'start of day')",
+        })
+        self._do_activity_contracts_custom({
+            "date": date,
+            "target_table": self.ContractsWeekTable,
+            "time_select": "start_of_week",
+            "source_table": self.StationsWeekTable,
+            "where_clause": "start_of_week = strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
+        })
+        self._do_activity_contracts_custom({
+            "date": date,
+            "target_table": self.ContractsMonthTable,
+            "time_select": "start_of_month",
+            "source_table": self.StationsMonthTable,
+            "where_clause": "start_of_month = strftime('%s', :date, 'start of month')",
+        })
+        self._do_activity_contracts_custom({
+            "date": date,
+            "target_table": self.ContractsYearTable,
+            "time_select": "start_of_year",
+            "source_table": self.StationsYearTable,
+            "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
+        })
         self._do_activity_global_day(date)
         self._do_activity_global_week(date)
         self._do_activity_global_month(date)
