@@ -27,47 +27,42 @@ class MinMax(object):
     def _create_stations_day_table(self):
         if self._arguments.verbose:
             print "Creating table", self.StationsDayTable
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                date TEXT NOT NULL,
-                contract_id INTEGER NOT NULL,
-                station_number INTEGER NOT NULL,
-                min_bikes INTEGER NOT NULL,
-                max_bikes INTEGER NOT NULL,
-                min_slots INTEGER NOT NULL,
-                max_slots INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                PRIMARY KEY (date, contract_id, station_number)
-                ) WITHOUT ROWID;
-                ''' % self.StationsDayTable)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % self.StationsDayTable)
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+            date TEXT NOT NULL,
+            contract_id INTEGER NOT NULL,
+            station_number INTEGER NOT NULL,
+            min_bikes INTEGER NOT NULL,
+            max_bikes INTEGER NOT NULL,
+            min_slots INTEGER NOT NULL,
+            max_slots INTEGER NOT NULL,
+            num_changes INTEGER NOT NULL,
+            PRIMARY KEY (date, contract_id, station_number)
+            ) WITHOUT ROWID;
+            ''' % self.StationsDayTable,
+            None,
+            "Database error while creating table [%s]" % self.StationsDayTable)
 
     def _do_stations(self, date):
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                SELECT ?,
-                contract_id,
-                station_number,
-                MIN(available_bikes),
-                MAX(available_bikes),
-                MIN(available_bike_stands),
-                MAX(available_bike_stands),
-                COUNT(timestamp)
-                FROM %s.%s
-                GROUP BY contract_id, station_number
-                ''' % (self.StationsDayTable, self._sample_schema, jcd.dao.ShortSamplesDAO.TableNameArchive),
-                (date,))
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+        self._db.execute_single(
+            '''
+            INSERT OR REPLACE INTO %s
+            SELECT ?,
+            contract_id,
+            station_number,
+            MIN(available_bikes),
+            MAX(available_bikes),
+            MIN(available_bike_stands),
+            MAX(available_bike_stands),
+            COUNT(timestamp)
+            FROM %s.%s
+            GROUP BY contract_id, station_number
+            ''' % (self.StationsDayTable,
+                   self._sample_schema,
+                   jcd.dao.ShortSamplesDAO.TableNameArchive),
+            (date,),
+            "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
 
     def run(self, date):
         self._do_stations(date)
@@ -131,170 +126,141 @@ class Activity(object):
     def _create_table_stations_custom(self, table_name, time_key_name):
         if self._arguments.verbose:
             print "Creating table", table_name
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                %s INTEGER NOT NULL,
-                contract_id INTEGER NOT NULL,
-                station_number INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                rank_contract INTEGER,
-                rank_global INTEGER,
-                PRIMARY KEY (%s, contract_id, station_number)
-                ) WITHOUT ROWID;
-                ''' % (table_name, time_key_name, time_key_name))
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % table_name)
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+            %s INTEGER NOT NULL,
+            contract_id INTEGER NOT NULL,
+            station_number INTEGER NOT NULL,
+            num_changes INTEGER NOT NULL,
+            rank_contract INTEGER,
+            rank_global INTEGER,
+            PRIMARY KEY (%s, contract_id, station_number)
+            ) WITHOUT ROWID;
+            ''' % (table_name, time_key_name, time_key_name),
+            None,
+            "Database error while creating table [%s]" % table_name)
 
     def _create_table_contracts_custom(self, table_name, time_key_name):
         if self._arguments.verbose:
             print "Creating table", table_name
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                %s INTEGER NOT NULL,
-                contract_id INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                rank_global INTEGER,
-                PRIMARY KEY (%s, contract_id)
-                ) WITHOUT ROWID;
-                ''' % (table_name, time_key_name, time_key_name))
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % table_name)
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+            %s INTEGER NOT NULL,
+            contract_id INTEGER NOT NULL,
+            num_changes INTEGER NOT NULL,
+            rank_global INTEGER,
+            PRIMARY KEY (%s, contract_id)
+            ) WITHOUT ROWID;
+            ''' % (table_name, time_key_name, time_key_name),
+            None,
+            "Database error while creating table [%s]" % table_name)
 
     def _create_table_global_custom(self, table_name, time_key_name):
         if self._arguments.verbose:
             print "Creating table", table_name
-        try:
-            self._db.connection.execute(
-                '''
-                CREATE TABLE %s (
-                %s INTEGER NOT NULL,
-                num_changes INTEGER NOT NULL,
-                PRIMARY KEY (%s)
-                ) WITHOUT ROWID;
-                ''' % (table_name, time_key_name, time_key_name))
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while creating table [%s]" % table_name)
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+            %s INTEGER NOT NULL,
+            num_changes INTEGER NOT NULL,
+            PRIMARY KEY (%s)
+            ) WITHOUT ROWID;
+            ''' % (table_name, time_key_name, time_key_name),
+            None,
+            "Database error while creating table [%s]" % table_name)
 
     def _do_activity_stations_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT %s,
-                        contract_id,
-                        station_number,
-                        %s,
-                        NULL,
-                        NULL
-                    FROM %s
-                    WHERE %s BETWEEN %s AND %s
-                    GROUP BY contract_id, station_number
-                ''' % (params["target_table"],
-                       params["time_select"],
-                       params["aggregate_select"],
-                       params["source_table"],
-                       params["where_select"],
-                       params["between_first"],
-                       params["between_last"]),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing stations activity into table [%s]" % params["target_table"])
+        self._db.execute_single(
+            '''
+            INSERT OR REPLACE INTO %s
+                SELECT %s,
+                    contract_id,
+                    station_number,
+                    %s,
+                    NULL,
+                    NULL
+                FROM %s
+                WHERE %s BETWEEN %s AND %s
+                GROUP BY contract_id, station_number
+            ''' % (params["target_table"],
+                   params["time_select"],
+                   params["aggregate_select"],
+                   params["source_table"],
+                   params["where_select"],
+                   params["between_first"],
+                   params["between_last"]),
+            params,
+            "Database error while storing stations activity into table [%s]" % params["target_table"])
 
     def _do_activity_contracts_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT %s,
-                        contract_id,
-                        SUM(num_changes),
-                        NULL
-                    FROM %s
-                    WHERE %s
-                    GROUP BY contract_id
-                ''' % (params["target_table"],
-                       params["time_select"],
-                       params["source_table"],
-                       params["where_clause"]),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing daily contracts activity into table [%s]" % params["target_table"])
+        self._db.execute_single(
+            '''
+            INSERT OR REPLACE INTO %s
+                SELECT %s,
+                    contract_id,
+                    SUM(num_changes),
+                    NULL
+                FROM %s
+                WHERE %s
+                GROUP BY contract_id
+            ''' % (params["target_table"],
+                   params["time_select"],
+                   params["source_table"],
+                   params["where_clause"]),
+            params,
+            "Database error while storing daily contracts activity into table [%s]" % params["target_table"])
 
     def _do_activity_global_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        try:
-            self._db.connection.execute(
-                '''
-                INSERT OR REPLACE INTO %s
-                    SELECT %s,
-                        SUM(num_changes)
-                    FROM %s
-                    WHERE %s
-                    GROUP BY %s
-                ''' % (params["target_table"],
-                       params["time_select"],
-                       params["source_table"],
-                       params["where_clause"],
-                       params["time_select"]),
-                params)
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while storing daily global activity into table [%s]" % params["target_table"])
+        self._db.execute_single(
+            '''
+            INSERT OR REPLACE INTO %s
+                SELECT %s,
+                    SUM(num_changes)
+                FROM %s
+                WHERE %s
+                GROUP BY %s
+            ''' % (params["target_table"],
+                   params["time_select"],
+                   params["source_table"],
+                   params["where_clause"],
+                   params["time_select"]),
+            params,
+            "Database error while storing daily global activity into table [%s]" % params["target_table"])
 
     def _stations_day_get(self, date):
         params = {"date": date}
-        try:
-            req = self._db.connection.execute(
-                '''
-                SELECT start_of_day,
-                    contract_id,
-                    station_number,
-                    num_changes,
-                    rank_contract,
-                    rank_global
-                FROM %s
-                WHERE start_of_day = strftime('%%s', :date)
-                ORDER BY num_changes DESC
-                ''' % (self.StationsDayTable),
-                params)
-            while True:
-                ranks = req.fetchmany(1000)
-                if not ranks:
-                    break
-                for rank in ranks:
-                    d_rank = {
-                        "start_of_day": rank[0],
-                        "contract_id": rank[1],
-                        "station_number": rank[2],
-                        "num_changes": rank[3],
-                        "rank_contract": rank[4],
-                        "rank_global": rank[5],
-                    }
-                    yield d_rank
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException(
-                "Database error while getting daily activity ranks")
+        ranks = self._db.execute_fetch_generator(
+            '''
+            SELECT start_of_day,
+                contract_id,
+                station_number,
+                num_changes,
+                rank_contract,
+                rank_global
+            FROM %s
+            WHERE start_of_day = strftime('%%s', :date)
+            ORDER BY num_changes DESC
+            ''' % (self.StationsDayTable),
+            params,
+            "Database error while getting daily activity ranks")
+        for rank in ranks:
+            d_rank = {
+                "start_of_day": rank[0],
+                "contract_id": rank[1],
+                "station_number": rank[2],
+                "num_changes": rank[3],
+                "rank_contract": rank[4],
+                "rank_global": rank[5],
+            }
+            yield d_rank
 
     def _stations_day_compute_ranks(self, date):
 
@@ -347,23 +313,20 @@ class Activity(object):
         # TODO: what to do when there is nothing ?
 
     def _stations_day_update_ranks(self, date):
-        try:
-            # update any existing contracts
-            req = self._db.connection.executemany(
-                '''
-                UPDATE %s
-                SET rank_global = :rank_global,
-                    rank_contract = :rank_contract
-                WHERE start_of_day = :start_of_day AND
-                    contract_id = :contract_id AND
-                    station_number = :station_number
-                ''' % (self.StationsDayTable),
-                self._stations_day_compute_ranks(date))
-            # return number of inserted records
-            return req.rowcount
-        except sqlite3.Error as error:
-            print "%s: %s" % (type(error).__name__, error)
-            raise jcd.common.JcdException("Database error while updating daily station activity rankings")
+        # update any existing contracts
+        updated = self._db.execute_many(
+            '''
+            UPDATE %s
+            SET rank_global = :rank_global,
+                rank_contract = :rank_contract
+            WHERE start_of_day = :start_of_day AND
+                contract_id = :contract_id AND
+                station_number = :station_number
+            ''' % (self.StationsDayTable),
+            self._stations_day_compute_ranks(date),
+            "Database error while updating daily station activity rankings")
+        # return number of updated records
+        return updated
 
     def run(self, date):
         self._do_activity_stations_custom({
