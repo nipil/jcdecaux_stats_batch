@@ -247,96 +247,90 @@ class Activity(object):
             print "... %i records" % inserted
         return inserted
 
-    def _stations_day_get(self, date):
-        params = {"date": date}
-        ranks = self._db.execute_fetch_generator(
+    @staticmethod
+    def _rank_generic(items, value_index, global_outdex, section_index=None, section_outdex=None):
+        # used for section ranking
+        sections = {}
+        # used for global ranking
+        global_infos = {
+            "g_total": None,
+            "g_rank": None,
+            "g_last": None
+        }
+        # do the ranking, one item at a time
+        for item in items:
+            ## calculate section ranks (only if asked)
+            if section_index is not None and section_outdex is not None:
+                # first
+                if item[section_index] not in sections:
+                    sections[item[section_index]] = {
+                        "s_total": 0,
+                        "s_rank": 1,
+                        "s_last": item[value_index]
+                    }
+                # quicker lookip
+                section_infos = sections[item[section_index]]
+                # sample done for section
+                section_infos["s_total"] += 1
+                # not the same number of events
+                if item[value_index] != section_infos["s_last"]:
+                    section_infos["s_rank"] = section_infos["s_total"]
+                    section_infos["s_last"] = item[value_index]
+                # set section rank
+                item[section_outdex] = section_infos["s_rank"]
+            ## calculate global ranks
+            # first
+            if global_infos["g_last"] is None:
+                global_infos["g_total"] = 0
+                global_infos["g_rank"] = 1
+                global_infos["g_last"] = item[value_index]
+            # sample done globally
+            global_infos["g_total"] += 1
+            # not the same number of events
+            if item[value_index] != global_infos["g_last"]:
+                global_infos["g_rank"] = global_infos["g_total"]
+                global_infos["g_last"] = item[value_index]
+            # set global rank
+            item[global_outdex] = global_infos["g_rank"]
+            ## return updated item
+            yield item
+
+    def _stations_update_ranking_custom(self, date, table_name, timefield_name):
+        # read from db
+        raw_items = self._db.execute_fetch_generator(
             '''
-            SELECT start_of_day,
+            SELECT %s,
                 contract_id,
                 station_number,
                 num_changes,
                 rank_contract,
                 rank_global
             FROM %s
-            WHERE start_of_day = strftime('%%s', :date)
+            WHERE %s = strftime('%%s', ?)
             ORDER BY num_changes DESC
-            ''' % (self.StationsDayTable),
-            params,
-            "Database error while getting daily activity ranks")
-        for rank in ranks:
-            d_rank = {
-                "start_of_day": rank[0],
-                "contract_id": rank[1],
-                "station_number": rank[2],
-                "num_changes": rank[3],
-                "rank_contract": rank[4],
-                "rank_global": rank[5],
-            }
-            yield d_rank
-
-    def _stations_day_compute_ranks(self, date):
-
-        contracts = {}
-        global_infos = {
-            "n_total": None,
-            "n_rank": None,
-            "n_last": None
-        }
-
-        for rank in self._stations_day_get(date):
-
-            ## calculate contract ranks
-            # first
-            if rank["contract_id"] not in contracts:
-                contracts[rank["contract_id"]] = {
-                    "c_total": 0,
-                    "c_rank": 1,
-                    "c_last": rank["num_changes"]
-                }
-            # quicker lookip
-            contract_infos = contracts[rank["contract_id"]]
-            # sample done for contract
-            contract_infos["c_total"] += 1
-            # not the same number of events
-            if rank["num_changes"] != contract_infos["c_last"]:
-                contract_infos["c_rank"] = contract_infos["c_total"]
-                contract_infos["c_last"] = rank["num_changes"]
-            # set rank
-            rank["rank_contract"] = contract_infos["c_rank"]
-
-            ## calculate global ranks
-            # first
-            if global_infos["n_last"] is None:
-                global_infos["n_total"] = 0
-                global_infos["n_rank"] = 1
-                global_infos["n_last"] = rank["num_changes"]
-            # sample done globally
-            global_infos["n_total"] += 1
-            # not the same number of events
-            if rank["num_changes"] != global_infos["n_last"]:
-                global_infos["n_rank"] = global_infos["n_total"]
-                global_infos["n_last"] = rank["num_changes"]
-            # set rank
-            rank["rank_global"] = global_infos["n_rank"]
-
-            ## return value
-            yield rank
-
-        # TODO: what to do when there is nothing ?
-
-    def _stations_day_update_ranks(self, date):
-        # update any existing contracts
+            ''' % (timefield_name, table_name, timefield_name),
+            (date,),
+            "Database error while getting daily activity ranks",
+            True)
+        # rank item
+        ranked_items = Activity._rank_generic(
+            raw_items,
+            "num_changes",
+            "rank_global",
+            "contract_id",
+            "rank_contract")
+        # write to db
         updated = self._db.execute_many(
             '''
             UPDATE %s
             SET rank_global = :rank_global,
                 rank_contract = :rank_contract
-            WHERE start_of_day = :start_of_day AND
+            WHERE %s = :%s AND
                 contract_id = :contract_id AND
                 station_number = :station_number
-            ''' % (self.StationsDayTable),
-            self._stations_day_compute_ranks(date),
-            "Database error while updating daily station activity rankings")
+            ''' % (table_name, timefield_name, timefield_name),
+            ranked_items,
+            "Database error while updating %s" % table_name)
         # return number of updated records
         return updated
 
@@ -351,6 +345,7 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of day')",
             "between_last": "strftime('%s', :date, 'start of day', '+1 day') - 1"
         })
+        self._stations_update_ranking_custom(date, self.StationsDayTable, "start_of_day")
         self._do_activity_stations_custom({
             "date": date,
             "target_table": self.StationsWeekTable,
@@ -437,7 +432,6 @@ class Activity(object):
             "source_table": self.ContractsYearTable,
             "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
         })
-        self._stations_day_update_ranks(date)
 
 class App(object):
 
