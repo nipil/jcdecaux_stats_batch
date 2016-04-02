@@ -45,7 +45,7 @@ class MinMax(object):
             "Database error while creating table [%s]" % self.StationsDayTable)
 
     def _do_stations(self, date):
-        self._db.execute_single(
+        inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
             SELECT ?,
@@ -63,9 +63,12 @@ class MinMax(object):
                    jcd.dao.ShortSamplesDAO.TableNameArchive),
             (date,),
             "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+        return inserted
 
     def run(self, date):
-        self._do_stations(date)
+        inserted = self._do_stations(date)
+        if self._arguments.verbose:
+            print "Inserted %i records for daily stations min-max" % inserted
 
 class Activity(object):
 
@@ -174,7 +177,7 @@ class Activity(object):
     def _do_activity_stations_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        self._db.execute_single(
+        inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
                 SELECT %s,
@@ -195,11 +198,14 @@ class Activity(object):
                    params["between_last"]),
             params,
             "Database error while storing stations activity into table [%s]" % params["target_table"])
+        if self._arguments.verbose:
+            print "... %i records" % inserted
+        return inserted
 
     def _do_activity_contracts_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        self._db.execute_single(
+        inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
                 SELECT %s,
@@ -215,11 +221,14 @@ class Activity(object):
                    params["where_clause"]),
             params,
             "Database error while storing daily contracts activity into table [%s]" % params["target_table"])
+        if self._arguments.verbose:
+            print "... %i records" % inserted
+        return inserted
 
     def _do_activity_global_custom(self, params):
         if self._arguments.verbose:
             print "Update table", params["target_table"], "for", params["date"]
-        self._db.execute_single(
+        inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
                 SELECT %s,
@@ -234,6 +243,9 @@ class Activity(object):
                    params["time_select"]),
             params,
             "Database error while storing daily global activity into table [%s]" % params["target_table"])
+        if self._arguments.verbose:
+            print "... %i records" % inserted
+        return inserted
 
     def _stations_day_get(self, date):
         params = {"date": date}
