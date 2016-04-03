@@ -295,7 +295,7 @@ class Activity(object):
             ## return updated item
             yield item
 
-    def _stations_update_ranking_custom(self, date, table_name, timefield_name):
+    def _stations_update_ranking_custom(self, params, expr_date, table_name, timefield_name):
         # read from db
         raw_items = self._db.execute_fetch_generator(
             '''
@@ -306,11 +306,11 @@ class Activity(object):
                 rank_contract,
                 rank_global
             FROM %s
-            WHERE %s = strftime('%%s', ?)
+            WHERE %s = %s
             ORDER BY num_changes DESC
-            ''' % (timefield_name, table_name, timefield_name),
-            (date,),
-            "Database error while getting daily activity ranks",
+            ''' % (timefield_name, table_name, timefield_name, expr_date),
+            params,
+            "Database error while getting activity ranks",
             True)
         # rank item
         ranked_items = Activity._rank_generic(
@@ -335,6 +335,7 @@ class Activity(object):
         return updated
 
     def run(self, date):
+        # daily station
         self._do_activity_stations_custom({
             "date": date,
             "target_table": self.StationsDayTable,
@@ -345,7 +346,12 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of day')",
             "between_last": "strftime('%s', :date, 'start of day', '+1 day') - 1"
         })
-        self._stations_update_ranking_custom(date, self.StationsDayTable, "start_of_day")
+        print "daily", self._stations_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of day')",
+            self.StationsDayTable,
+            "start_of_day")
+        # weekly station
         self._do_activity_stations_custom({
             "date": date,
             "target_table": self.StationsWeekTable,
@@ -356,6 +362,12 @@ class Activity(object):
             "between_first": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
             "between_last": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day', '+7 days') - 1"
         })
+        print "weekly", self._stations_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
+            self.StationsWeekTable,
+            "start_of_week")
+        # monthly station
         self._do_activity_stations_custom({
             "date": date,
             "target_table": self.StationsMonthTable,
@@ -366,6 +378,12 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of month')",
             "between_last": "strftime('%s', :date, 'start of month', '+1 month') - 1"
         })
+        print "monthly", self._stations_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of month')",
+            self.StationsMonthTable,
+            "start_of_month")
+        # yearly station
         self._do_activity_stations_custom({
             "date": date,
             "target_table": self.StationsYearTable,
@@ -376,6 +394,12 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of year')",
             "between_last": "strftime('%s', :date, 'start of year', '+1 year') - 1"
         })
+        print "yearly", self._stations_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of year')",
+            self.StationsYearTable,
+            "start_of_year")
+        # daily contract
         self._do_activity_contracts_custom({
             "date": date,
             "target_table": self.ContractsDayTable,
@@ -383,6 +407,7 @@ class Activity(object):
             "source_table": self.StationsDayTable,
             "where_clause": "start_of_day = strftime('%s', :date, 'start of day')",
         })
+        # weekly contract
         self._do_activity_contracts_custom({
             "date": date,
             "target_table": self.ContractsWeekTable,
@@ -390,6 +415,7 @@ class Activity(object):
             "source_table": self.StationsWeekTable,
             "where_clause": "start_of_week = strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
         })
+        # monthly contract
         self._do_activity_contracts_custom({
             "date": date,
             "target_table": self.ContractsMonthTable,
@@ -397,6 +423,7 @@ class Activity(object):
             "source_table": self.StationsMonthTable,
             "where_clause": "start_of_month = strftime('%s', :date, 'start of month')",
         })
+        # yearly contract
         self._do_activity_contracts_custom({
             "date": date,
             "target_table": self.ContractsYearTable,
@@ -404,6 +431,7 @@ class Activity(object):
             "source_table": self.StationsYearTable,
             "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
         })
+        # daily global
         self._do_activity_global_custom({
             "date": date,
             "target_table": self.GlobalDayTable,
@@ -411,6 +439,7 @@ class Activity(object):
             "source_table": self.ContractsDayTable,
             "where_clause": "start_of_day = strftime('%s', :date, 'start of day')",
         })
+        # weekly global
         self._do_activity_global_custom({
             "date": date,
             "target_table": self.GlobalWeekTable,
@@ -418,6 +447,7 @@ class Activity(object):
             "source_table": self.ContractsWeekTable,
             "where_clause": "start_of_week = strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
         })
+        # monthly global
         self._do_activity_global_custom({
             "date": date,
             "target_table": self.GlobalMonthTable,
@@ -425,6 +455,7 @@ class Activity(object):
             "source_table": self.ContractsMonthTable,
             "where_clause": "start_of_month = strftime('%s', :date, 'start of month')",
         })
+        # yearly global
         self._do_activity_global_custom({
             "date": date,
             "target_table": self.GlobalYearTable,
