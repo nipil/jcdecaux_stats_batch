@@ -442,6 +442,11 @@ class Activity(object):
             "source_table": self.StationsDayTable,
             "where_clause": "start_of_day = strftime('%s', :date, 'start of day')",
         })
+        self._contracts_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of day')",
+            self.ContractsDayTable,
+            "start_of_day")
         # weekly contract
         self._do_activity_contracts_custom({
             "date": date,
@@ -450,6 +455,11 @@ class Activity(object):
             "source_table": self.StationsWeekTable,
             "where_clause": "start_of_week = strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
         })
+        self._contracts_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
+            self.ContractsWeekTable,
+            "start_of_week")
         # monthly contract
         self._do_activity_contracts_custom({
             "date": date,
@@ -458,6 +468,11 @@ class Activity(object):
             "source_table": self.StationsMonthTable,
             "where_clause": "start_of_month = strftime('%s', :date, 'start of month')",
         })
+        self._contracts_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of month')",
+            self.ContractsMonthTable,
+            "start_of_month")
         # yearly contract
         self._do_activity_contracts_custom({
             "date": date,
@@ -466,6 +481,11 @@ class Activity(object):
             "source_table": self.StationsYearTable,
             "where_clause": "start_of_year = strftime('%s', :date, 'start of year')",
         })
+        self._contracts_update_ranking_custom(
+            {"date": date},
+            "strftime('%s', :date, 'start of year')",
+            self.ContractsYearTable,
+            "start_of_year")
         # daily global
         self._do_activity_global_custom({
             "date": date,
