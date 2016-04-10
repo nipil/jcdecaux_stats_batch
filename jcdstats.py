@@ -381,7 +381,7 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of day')",
             "between_last": "strftime('%s', :date, 'start of day', '+1 day') - 1"
         })
-        print "daily", self._stations_update_ranking_custom(
+        self._stations_update_ranking_custom(
             {"date": date},
             "strftime('%s', :date, 'start of day')",
             self.StationsDayTable,
@@ -397,7 +397,7 @@ class Activity(object):
             "between_first": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
             "between_last": "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day', '+7 days') - 1"
         })
-        print "weekly", self._stations_update_ranking_custom(
+        self._stations_update_ranking_custom(
             {"date": date},
             "strftime('%s', :date, '-' || strftime('%w', :date, '-1 day') || ' days', 'start of day')",
             self.StationsWeekTable,
@@ -413,7 +413,7 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of month')",
             "between_last": "strftime('%s', :date, 'start of month', '+1 month') - 1"
         })
-        print "monthly", self._stations_update_ranking_custom(
+        self._stations_update_ranking_custom(
             {"date": date},
             "strftime('%s', :date, 'start of month')",
             self.StationsMonthTable,
@@ -429,7 +429,7 @@ class Activity(object):
             "between_first": "strftime('%s', :date, 'start of year')",
             "between_last": "strftime('%s', :date, 'start of year', '+1 year') - 1"
         })
-        print "yearly", self._stations_update_ranking_custom(
+        self._stations_update_ranking_custom(
             {"date": date},
             "strftime('%s', :date, 'start of year')",
             self.StationsYearTable,
