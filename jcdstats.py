@@ -334,6 +334,41 @@ class Activity(object):
         # return number of updated records
         return updated
 
+    def _contracts_update_ranking_custom(self, params, expr_date, table_name, timefield_name):
+        # read from db
+        raw_items = self._db.execute_fetch_generator(
+            '''
+            SELECT %s,
+                contract_id,
+                num_changes,
+                rank_global
+            FROM %s
+            WHERE %s = %s
+            ORDER BY num_changes DESC
+            ''' % (timefield_name, table_name, timefield_name, expr_date),
+            params,
+            "Database error while getting activity ranks",
+            True)
+        # rank item
+        ranked_items = Activity._rank_generic(
+            raw_items,
+            "num_changes",
+            "rank_global",
+            None,
+            None)
+        # write to db
+        updated = self._db.execute_many(
+            '''
+            UPDATE %s
+            SET rank_global = :rank_global
+            WHERE %s = :%s AND
+                contract_id = :contract_id
+            ''' % (table_name, timefield_name, timefield_name),
+            ranked_items,
+            "Database error while updating %s" % table_name)
+        # return number of updated records
+        return updated
+
     def run(self, date):
         # daily station
         self._do_activity_stations_custom({
