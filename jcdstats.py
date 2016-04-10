@@ -44,6 +44,29 @@ class MinMax(object):
             None,
             "Database error while creating table [%s]" % self.StationsDayTable)
 
+    def _get_operation_samples(self, operation):
+        return self._db.execute_fetch_generator(
+            '''
+            SELECT %s(timestamp) as timestamp,
+                contract_id,
+                station_number,
+                available_bikes,
+                available_bike_stands
+            FROM %s.%s
+            GROUP BY contract_id, station_number
+            ''' % (operation,
+                   self._sample_schema,
+                   jcd.dao.ShortSamplesDAO.TableNameArchive),
+            None,
+            "Database error while getting boundary samples",
+            True)
+
+    def _get_first_samples(self):
+        return self._get_operation_samples("min")
+
+    def _get_last_samples(self):
+        return self._get_operation_samples("max")
+
     def _do_stations(self, date):
         inserted = self._db.execute_single(
             '''
