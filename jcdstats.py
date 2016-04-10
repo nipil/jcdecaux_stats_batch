@@ -65,10 +65,74 @@ class MinMax(object):
             "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
         return inserted
 
+    def _do_contracts(self):
+        # list contracts
+        contracts = self._db.execute_fetch_generator(
+            '''
+            SELECT DISTINCT contract_id
+            FROM %s.%s
+            ''' % (self._sample_schema,
+                jcd.dao.ShortSamplesDAO.TableNameArchive),
+            None,
+            "Database error while listing contracts")
+        # analyse each contract
+        for contract in contracts:
+            contract_id = contract[0]
+            max_bikes = self._do_contract(contract_id)
+            print "contract_id", contract_id, "max_bikes", max_bikes
+
+    def _do_contract(self, contract_id):
+        # get first samples
+        first_samples = self._db.execute_fetch_generator(
+            '''
+            SELECT MIN(timestamp) AS timestamp,
+                contract_id,
+                station_number,
+                available_bikes,
+                available_bike_stands
+            FROM %s.%s
+            WHERE contract_id = ?
+            GROUP BY contract_id, station_number
+            ORDER BY timestamp ASC
+            ''' % (self._sample_schema,
+                jcd.dao.ShortSamplesDAO.TableNameArchive),
+            (contract_id,),
+            "Database error while getting daily samples",
+            True)
+        # setup with first data
+        amounts = {}
+        for sample in first_samples:
+            amounts[sample["station_number"]] = sample["available_bikes"]
+        max_bikes = sum(amounts.itervalues())
+        # read from db
+        samples = self._db.execute_fetch_generator(
+            '''
+            SELECT station_number,
+                available_bikes
+            FROM %s.%s
+            WHERE contract_id = ?
+            ORDER BY timestamp ASC
+            ''' % (self._sample_schema,
+                jcd.dao.ShortSamplesDAO.TableNameArchive),
+            (contract_id,),
+            "Database error while getting daily samples",
+            True)
+        # analyze
+        for sample in samples:
+            amounts[sample["station_number"]] = sample["available_bikes"]
+            max_candidate = sum(amounts.itervalues())
+            if max_candidate > max_bikes:
+                max_bikes = max_candidate
+        # return max
+        return max_bikes
+
     def run(self, date):
         inserted = self._do_stations(date)
         if self._arguments.verbose:
-            print "Inserted %i records for daily stations min-max" % inserted
+           print "Inserted %i records for daily stations min-max" % inserted
+        inserted = self._do_contracts()
+        if self._arguments.verbose:
+            print "Inserted %i records for daily contracts min-max" % inserted
 
 class Activity(object):
 
