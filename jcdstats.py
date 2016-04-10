@@ -176,7 +176,7 @@ class Activity(object):
 
     def _do_activity_stations_custom(self, params):
         if self._arguments.verbose:
-            print "Update table", params["target_table"], "for", params["date"]
+            print "Update table", params["target_table"], "for", params["date"],
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
@@ -204,7 +204,7 @@ class Activity(object):
 
     def _do_activity_contracts_custom(self, params):
         if self._arguments.verbose:
-            print "Update table", params["target_table"], "for", params["date"]
+            print "Update table", params["target_table"], "for", params["date"],
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
@@ -227,7 +227,7 @@ class Activity(object):
 
     def _do_activity_global_custom(self, params):
         if self._arguments.verbose:
-            print "Update table", params["target_table"], "for", params["date"]
+            print "Update table", params["target_table"], "for", params["date"],
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
