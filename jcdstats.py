@@ -69,10 +69,9 @@ class MinMax(object):
         # list contracts
         contracts = self._db.execute_fetch_generator(
             '''
-            SELECT DISTINCT contract_id
-            FROM %s.%s
-            ''' % (self._sample_schema,
-                jcd.dao.ShortSamplesDAO.TableNameArchive),
+            SELECT contract_id
+            FROM app.contracts
+            ''',
             None,
             "Database error while listing contracts")
         # analyse each contract
@@ -585,7 +584,7 @@ class Activity(object):
 
 class App(object):
 
-    def __init__(self, default_data_path, default_db_filename):
+    def __init__(self, default_data_path, default_statdb_filename, default_appdb_filename):
         # construct parser
         self._parser = argparse.ArgumentParser(
             description='Calculate min-max data from jcd stats')
@@ -595,9 +594,14 @@ class App(object):
             default=default_data_path
         )
         self._parser.add_argument(
-            '--dbname',
-            help='choose db filename (default: %s)' % default_db_filename,
-            default=default_db_filename
+            '--statdbname',
+            help='choose stats db filename (default: %s)' % default_statdb_filename,
+            default=default_statdb_filename
+        )
+        self._parser.add_argument(
+            '--appdbname',
+            help='choose app db filename (default: %s)' % default_appdb_filename,
+            default=default_appdb_filename
         )
         self._parser.add_argument(
             '--verbose', '-v',
@@ -614,23 +618,25 @@ class App(object):
     def run(self):
         # parse arguments
         arguments = self._parser.parse_args()
-        with jcd.common.SqliteDB(arguments.dbname, arguments.datadir) as db_stats:
+        with jcd.common.SqliteDB(arguments.statdbname, arguments.datadir) as db_stats:
             for date in arguments.date:
                 if arguments.verbose:
                     print "Processing", date
-                # attach samples db
+                # attach db
                 schema = jcd.dao.ShortSamplesDAO.get_schema_name(date)
                 filename = jcd.dao.ShortSamplesDAO.get_db_file_name(schema)
                 db_stats.attach_database(filename, schema, arguments.datadir)
+                db_stats.attach_database(arguments.appdbname, "app", arguments.datadir)
                 # do processing
                 MinMax(db_stats, schema, arguments).run(date)
                 Activity(db_stats, schema, arguments).run(date)
-                # detach samples db
+                # detach db
+                db_stats.detach_database("app")
                 db_stats.detach_database(schema)
 
 # main
 if __name__ == '__main__':
     try:
-        App("~/.jcd_v2", "stats.db").run()
+        App("~/.jcd_v2", "stats.db", "app.db").run()
     except KeyboardInterrupt:
         pass
