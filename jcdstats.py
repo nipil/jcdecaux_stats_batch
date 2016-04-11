@@ -10,6 +10,7 @@ import jcd.dao
 class MinMax(object):
 
     StationsDayTable = "minmax_stations_day"
+    ContractsDayTable = "minmax_contracts_day"
 
     def __init__(self, db, sample_schema, arguments):
         self._db = db
@@ -23,6 +24,8 @@ class MinMax(object):
     def _create_tables_if_necessary(self):
         if not self._db.has_table(self.StationsDayTable):
             self._create_stations_day_table()
+        if not self._db.has_table(self.ContractsDayTable):
+            self._create_contracts_day_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -44,10 +47,26 @@ class MinMax(object):
             None,
             "Database error while creating table [%s]" % self.StationsDayTable)
 
+    def _create_contracts_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.ContractsDayTable
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+            start_of_day INTEGER NOT NULL,
+            contract_id INTEGER NOT NULL,
+            min_bikes INTEGER NOT NULL,
+            max_bikes INTEGER NOT NULL,
+            PRIMARY KEY (start_of_day, contract_id)
+            ) WITHOUT ROWID;
+            ''' % self.ContractsDayTable,
+            None,
+            "Database error while creating table [%s]" % self.ContractsDayTable)
+
     def _get_operation_samples(self, operation):
         return self._db.execute_fetch_generator(
             '''
-            SELECT %s(timestamp) as timestamp,
+            SELECT %s(timestamp) AS timestamp,
                 contract_id,
                 station_number,
                 available_bikes,
@@ -68,6 +87,8 @@ class MinMax(object):
         return self._get_operation_samples("max")
 
     def _do_stations(self, date):
+        if self._arguments.verbose:
+            print "Update table", self.StationsDayTable, "for", date,
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
@@ -85,76 +106,83 @@ class MinMax(object):
                    self._sample_schema,
                    jcd.dao.ShortSamplesDAO.TableNameArchive),
             (date,),
-            "Database error while storing daily min max into table [%s]" % self.StationsDayTable)
+            "Database error while storing daily station min max into table [%s]" % self.StationsDayTable)
+        if self._arguments.verbose:
+            print "... %i records" % inserted
         return inserted
 
-    def _do_contracts(self):
-        # list contracts
-        contracts = self._db.execute_fetch_generator(
-            '''
-            SELECT contract_id
-            FROM app.contracts
-            ''',
-            None,
-            "Database error while listing contracts")
-        # analyse each contract
-        for contract in contracts:
-            contract_id = contract[0]
-            max_bikes = self._do_contract(contract_id)
-            print "contract_id", contract_id, "max_bikes", max_bikes
-
-    def _do_contract(self, contract_id):
-        # get first samples
-        first_samples = self._db.execute_fetch_generator(
-            '''
-            SELECT MIN(timestamp) AS timestamp,
-                contract_id,
-                station_number,
-                available_bikes,
-                available_bike_stands
-            FROM %s.%s
-            WHERE contract_id = ?
-            GROUP BY contract_id, station_number
-            ORDER BY timestamp ASC
-            ''' % (self._sample_schema,
-                jcd.dao.ShortSamplesDAO.TableNameArchive),
-            (contract_id,),
-            "Database error while getting daily samples",
-            True)
-        # setup with first data
-        amounts = {}
-        for sample in first_samples:
-            amounts[sample["station_number"]] = sample["available_bikes"]
-        max_bikes = sum(amounts.itervalues())
-        # read from db
+    def _do_contract_stats_bike(self, date):
+        if self._arguments.verbose:
+            print "Update table", self.ContractsDayTable, "for", date,
+        contracts = {}
+        # initialize with first sample
+        samples = self._get_first_samples()
+        for sample in samples:
+            if sample["contract_id"] not in contracts:
+                contracts[sample["contract_id"]] = {
+                    "stations": {},
+                    # used only for db storage query
+                    "date": date,
+                    "contract_id": sample["contract_id"]
+                }
+            stations = contracts[sample["contract_id"]]["stations"]
+            stations[sample["station_number"]] = sample["available_bikes"]
+        for contract in contracts.itervalues():
+            sum_bikes = sum(contract["stations"].itervalues())
+            contract["cur"] = sum_bikes
+            contract["min"] = sum_bikes
+            contract["max"] = sum_bikes
+        # read every sample in chronological
         samples = self._db.execute_fetch_generator(
             '''
-            SELECT station_number,
+            SELECT contract_id,
+                station_number,
                 available_bikes
             FROM %s.%s
-            WHERE contract_id = ?
             ORDER BY timestamp ASC
             ''' % (self._sample_schema,
                 jcd.dao.ShortSamplesDAO.TableNameArchive),
-            (contract_id,),
+            None,
             "Database error while getting daily samples",
             True)
-        # analyze
+        # analyze samples and update min-max
         for sample in samples:
-            amounts[sample["station_number"]] = sample["available_bikes"]
-            max_candidate = sum(amounts.itervalues())
-            if max_candidate > max_bikes:
-                max_bikes = max_candidate
-        # return max
-        return max_bikes
+            contract = contracts[sample["contract_id"]]
+            stations = contract["stations"]
+            old_bikes = stations[sample["station_number"]]
+            new_bikes = sample["available_bikes"]
+            stations[sample["station_number"]] = new_bikes
+            delta = new_bikes - old_bikes
+            if delta != 0:
+                contract["cur"] += delta
+                if delta > 0 and contract["cur"] > contract["max"]:
+                    contract["max"] = contract["cur"]
+                if delta < 0 and contract["cur"] < contract["min"]:
+                    contract["min"] = contract["cur"]
+        # write to db
+        inserted = self._db.execute_many(
+            '''
+            INSERT OR REPLACE INTO %s (
+                start_of_day,
+                contract_id,
+                min_bikes,
+                max_bikes
+            )
+            VALUES(
+                strftime('%%s', :date),
+                :contract_id,
+                :min,
+                :max)
+            ''' % self.ContractsDayTable,
+            contracts.itervalues(),
+            "Database error while storing daily contract min max into table [%s]" % self.ContractsDayTable)
+        if self._arguments.verbose:
+            print "... %i records" % inserted
+        return inserted
 
     def run(self, date):
-        inserted = self._do_stations(date)
-        if self._arguments.verbose:
-           print "Inserted %i records for daily stations min-max" % inserted
-        inserted = self._do_contracts()
-        if self._arguments.verbose:
-            print "Inserted %i records for daily contracts min-max" % inserted
+        self._do_stations(date)
+        self._do_contract_stats_bike(date)
 
 class Activity(object):
 
