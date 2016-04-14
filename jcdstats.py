@@ -11,6 +11,7 @@ class MinMax(object):
 
     StationsDayTable = "minmax_stations_day"
     ContractsDayTable = "minmax_contracts_day"
+    GlobalsDayTable = "minmax_globals_day"
 
     def __init__(self, db, sample_schema, arguments):
         self._db = db
@@ -26,6 +27,8 @@ class MinMax(object):
             self._create_stations_day_table()
         if not self._db.has_table(self.ContractsDayTable):
             self._create_contracts_day_table()
+        if not self._db.has_table(self.GlobalsDayTable):
+            self._create_globals_day_table()
 
     def _create_stations_day_table(self):
         if self._arguments.verbose:
@@ -62,6 +65,21 @@ class MinMax(object):
             ''' % self.ContractsDayTable,
             None,
             "Database error while creating table [%s]" % self.ContractsDayTable)
+
+    def _create_globals_day_table(self):
+        if self._arguments.verbose:
+            print "Creating table", self.GlobalsDayTable
+        self._db.execute_single(
+            '''
+            CREATE TABLE %s (
+                start_of_day INTEGER NOT NULL,
+                min_bikes INTEGER NOT NULL,
+                max_bikes INTEGER NOT NULL,
+                PRIMARY KEY (start_of_day)
+            ) WITHOUT ROWID;
+            ''' % self.GlobalsDayTable,
+            None,
+            "Database error while creating table [%s]" % self.GlobalsDayTable)
 
     def _get_operation_samples(self, operation):
         return self._db.execute_fetch_generator(
@@ -180,9 +198,30 @@ class MinMax(object):
             print "... %i records" % inserted
         return inserted
 
+    def _do_globals(self, date):
+        if self._arguments.verbose:
+            print "Update table", self.GlobalsDayTable, "for", date,
+        # sum up contracts into globals
+        inserted = self._db.execute_single(
+            '''
+            INSERT OR REPLACE INTO %s
+                SELECT start_of_day,
+                    sum(min_bikes),
+                    sum(max_bikes)
+                FROM %s
+                WHERE start_of_day = strftime('%%s', ?, 'start of day')
+                GROUP BY start_of_day
+            ''' % (self.GlobalsDayTable, self.ContractsDayTable),
+            (date,),
+            "Database error while storing daily global min max into table [%s]" % self.ContractsDayTable)
+        if self._arguments.verbose:
+            print "... %i records" % inserted
+        return inserted
+
     def run(self, date):
         self._do_stations(date)
         self._do_contract_stats_bike(date)
+        self._do_globals(date)
 
 class Activity(object):
 
