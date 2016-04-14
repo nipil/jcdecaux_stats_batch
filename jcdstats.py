@@ -36,15 +36,15 @@ class MinMax(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-            date TEXT NOT NULL,
-            contract_id INTEGER NOT NULL,
-            station_number INTEGER NOT NULL,
-            min_bikes INTEGER NOT NULL,
-            max_bikes INTEGER NOT NULL,
-            min_slots INTEGER NOT NULL,
-            max_slots INTEGER NOT NULL,
-            num_changes INTEGER NOT NULL,
-            PRIMARY KEY (date, contract_id, station_number)
+                date TEXT NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                min_bikes INTEGER NOT NULL,
+                max_bikes INTEGER NOT NULL,
+                min_slots INTEGER NOT NULL,
+                max_slots INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (date, contract_id, station_number)
             ) WITHOUT ROWID;
             ''' % self.StationsDayTable,
             None,
@@ -56,11 +56,11 @@ class MinMax(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-            start_of_day INTEGER NOT NULL,
-            contract_id INTEGER NOT NULL,
-            min_bikes INTEGER NOT NULL,
-            max_bikes INTEGER NOT NULL,
-            PRIMARY KEY (start_of_day, contract_id)
+                start_of_day INTEGER NOT NULL,
+                contract_id INTEGER NOT NULL,
+                min_bikes INTEGER NOT NULL,
+                max_bikes INTEGER NOT NULL,
+                PRIMARY KEY (start_of_day, contract_id)
             ) WITHOUT ROWID;
             ''' % self.ContractsDayTable,
             None,
@@ -110,16 +110,16 @@ class MinMax(object):
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
-            SELECT ?,
-            contract_id,
-            station_number,
-            MIN(available_bikes),
-            MAX(available_bikes),
-            MIN(available_bike_stands),
-            MAX(available_bike_stands),
-            COUNT(timestamp)
-            FROM %s.%s
-            GROUP BY contract_id, station_number
+                SELECT ?,
+                    contract_id,
+                    station_number,
+                    MIN(available_bikes),
+                    MAX(available_bikes),
+                    MIN(available_bike_stands),
+                    MAX(available_bike_stands),
+                COUNT(timestamp)
+                FROM %s.%s
+                GROUP BY contract_id, station_number
             ''' % (self.StationsDayTable,
                    self._sample_schema,
                    jcd.dao.ShortSamplesDAO.TableNameArchive),
@@ -129,7 +129,7 @@ class MinMax(object):
             print "... %i records" % inserted
         return inserted
 
-    def _do_contract_stats_bike(self, date):
+    def _do_contracts(self, date):
         if self._arguments.verbose:
             print "Update table", self.ContractsDayTable, "for", date,
         contracts = {}
@@ -184,8 +184,7 @@ class MinMax(object):
                 start_of_day,
                 contract_id,
                 min_bikes,
-                max_bikes
-            )
+                max_bikes)
             VALUES(
                 strftime('%%s', :date),
                 :contract_id,
@@ -220,7 +219,7 @@ class MinMax(object):
 
     def run(self, date):
         self._do_stations(date)
-        self._do_contract_stats_bike(date)
+        self._do_contracts(date)
         self._do_globals(date)
 
 class Activity(object):
@@ -285,13 +284,13 @@ class Activity(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-            %s INTEGER NOT NULL,
-            contract_id INTEGER NOT NULL,
-            station_number INTEGER NOT NULL,
-            num_changes INTEGER NOT NULL,
-            rank_contract INTEGER,
-            rank_global INTEGER,
-            PRIMARY KEY (%s, contract_id, station_number)
+                %s INTEGER NOT NULL,
+                contract_id INTEGER NOT NULL,
+                station_number INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_contract INTEGER,
+                rank_global INTEGER,
+                PRIMARY KEY (%s, contract_id, station_number)
             ) WITHOUT ROWID;
             ''' % (table_name, time_key_name, time_key_name),
             None,
@@ -303,11 +302,11 @@ class Activity(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-            %s INTEGER NOT NULL,
-            contract_id INTEGER NOT NULL,
-            num_changes INTEGER NOT NULL,
-            rank_global INTEGER,
-            PRIMARY KEY (%s, contract_id)
+                %s INTEGER NOT NULL,
+                contract_id INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                rank_global INTEGER,
+                PRIMARY KEY (%s, contract_id)
             ) WITHOUT ROWID;
             ''' % (table_name, time_key_name, time_key_name),
             None,
@@ -319,9 +318,9 @@ class Activity(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-            %s INTEGER NOT NULL,
-            num_changes INTEGER NOT NULL,
-            PRIMARY KEY (%s)
+                %s INTEGER NOT NULL,
+                num_changes INTEGER NOT NULL,
+                PRIMARY KEY (%s)
             ) WITHOUT ROWID;
             ''' % (table_name, time_key_name, time_key_name),
             None,
