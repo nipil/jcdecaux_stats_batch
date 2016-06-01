@@ -36,7 +36,7 @@ class MinMax(object):
         self._db.execute_single(
             '''
             CREATE TABLE %s (
-                date TEXT NOT NULL,
+                start_of_day INTEGER NOT NULL,
                 contract_id INTEGER NOT NULL,
                 station_number INTEGER NOT NULL,
                 min_bikes INTEGER NOT NULL,
@@ -44,7 +44,7 @@ class MinMax(object):
                 min_slots INTEGER NOT NULL,
                 max_slots INTEGER NOT NULL,
                 num_changes INTEGER NOT NULL,
-                PRIMARY KEY (date, contract_id, station_number)
+                PRIMARY KEY (start_of_day, contract_id, station_number)
             ) WITHOUT ROWID;
             ''' % self.StationsDayTable,
             None,
@@ -110,14 +110,14 @@ class MinMax(object):
         inserted = self._db.execute_single(
             '''
             INSERT OR REPLACE INTO %s
-                SELECT ?,
+                SELECT strftime('%%s', ?, 'start of day'),
                     contract_id,
                     station_number,
                     MIN(available_bikes),
                     MAX(available_bikes),
                     MIN(available_bike_stands),
                     MAX(available_bike_stands),
-                COUNT(timestamp)
+                    COUNT(timestamp)
                 FROM %s.%s
                 GROUP BY contract_id, station_number
             ''' % (self.StationsDayTable,
