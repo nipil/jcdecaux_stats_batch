@@ -11,7 +11,7 @@ class MinMax(object):
 
     StationsDayTable = "minmax_stations_day"
     ContractsDayTable = "minmax_contracts_day"
-    GlobalsDayTable = "minmax_globals_day"
+    GlobalsDayTable = "minmax_global_day"
 
     def __init__(self, db, sample_schema, arguments):
         self._db = db
